@@ -119,17 +119,6 @@ export default function App() {
         id="mobile-viewport-container"
       >
         
-        {/* 모바일 최상단 아기자기한 커스텀 노치 디자인 바 */}
-        <div className="bg-[#FEF9F2] px-6 py-2.5 flex items-center justify-between text-[11px] font-bold text-[#928B81] shrink-0 border-b border-[#E9E4DB]/40">
-          <span className="flex items-center gap-1 font-display">
-            <span>⏰</span> 20:32
-          </span>
-          <div className="w-16 h-4 bg-[#E9E4DB] rounded-full mx-auto hidden md:block" />
-          <span className="flex items-center gap-1 font-display">
-            <span>📡</span> 5G <span className="text-emerald-600 font-bold">●</span>
-          </span>
-        </div>
-
         {/* 상단 통합 타이틀 헤더 바 */}
         <header className="bg-white px-5 py-3.5 border-b border-[#E9E4DB] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-1.5">
