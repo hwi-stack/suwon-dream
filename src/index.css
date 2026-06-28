@@ -66,9 +66,14 @@
   }
 }
 
+html {
+  font-size: 112%; /* 50대 이상 보호자분들을 위해 전체 글씨 크기를 기본 대비 12% 확대하여 가독성 증대 */
+}
+
 html, body {
   background-color: #FAF9F6; /* 은은하고 따뜻한 웜 오가닉 미색 배경 */
   color: #4A443F; /* 차분하고 정갈한 브라운 차콜 텍스트 */
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 

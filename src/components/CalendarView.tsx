@@ -22,6 +22,8 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
   const [useRange, setUseRange] = useState(false);
   const [endDateStr, setEndDateStr] = useState('');
   const [isAllDay, setIsAllDay] = useState(true);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
   const [timeStr, setTimeStr] = useState('');
   const [location, setLocation] = useState('');
   const [materials, setMaterials] = useState('');
@@ -36,6 +38,8 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
   const [editUseRange, setEditUseRange] = useState(false);
   const [editEndDateStr, setEditEndDateStr] = useState('');
   const [editIsAllDay, setEditIsAllDay] = useState(true);
+  const [editStartTime, setEditStartTime] = useState('09:00');
+  const [editEndTime, setEditEndTime] = useState('10:00');
   const [editTimeStr, setEditTimeStr] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editMaterials, setEditMaterials] = useState('');
@@ -74,14 +78,19 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
       return;
     }
 
+    // 기간 선택이 켜져 있으면 시간 정보를 모두 없앱니다.
+    const finalIsAllDay = useRange ? true : isAllDay;
+
     const newEvent: CalendarEvent = {
       id: `event-${Date.now()}`,
       title: title.trim(),
       content: content.trim(),
       date: selectedDateStr,
       endDate: useRange ? endDateStr : undefined,
-      isAllDay,
-      time: !isAllDay && timeStr.trim() ? timeStr.trim() : undefined,
+      isAllDay: finalIsAllDay,
+      time: !finalIsAllDay ? `${startTime} ~ ${endTime}` : undefined,
+      startTime: !finalIsAllDay ? startTime : undefined,
+      endTime: !finalIsAllDay ? endTime : undefined,
       location: location.trim() || undefined,
       materials: materials.trim() || undefined,
       extra: extra.trim() || undefined,
@@ -101,6 +110,8 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
     setEndDateStr('');
     setUseRange(false);
     setIsAllDay(true);
+    setStartTime('09:00');
+    setEndTime('10:00');
     setTimeStr('');
     setLocation('');
     setMaterials('');
@@ -150,6 +161,9 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
       return;
     }
 
+    // 기간 선택이 켜져 있으면 시간 정보를 모두 없앱니다.
+    const finalEditIsAllDay = editUseRange ? true : editIsAllDay;
+
     const updated = events.map((ev) => {
       if (ev.id === editingEvent.id) {
         return {
@@ -158,8 +172,10 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
           content: editContent.trim(),
           date: editSelectedDateStr,
           endDate: editUseRange ? editEndDateStr : undefined,
-          isAllDay: editIsAllDay,
-          time: !editIsAllDay && editTimeStr.trim() ? editTimeStr.trim() : undefined,
+          isAllDay: finalEditIsAllDay,
+          time: !finalEditIsAllDay ? `${editStartTime} ~ ${editEndTime}` : undefined,
+          startTime: !finalEditIsAllDay ? editStartTime : undefined,
+          endTime: !finalEditIsAllDay ? editEndTime : undefined,
           location: editLocation.trim() || undefined,
           materials: editMaterials.trim() || undefined,
           extra: editExtra.trim() || undefined,
@@ -275,41 +291,54 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
           </div>
 
           {/* 새 일정 옵션 (종일 & 기간 지정) */}
-          <div className="grid grid-cols-2 gap-3 bg-[#FEF9F2]/40 p-3 rounded-2xl border border-[#E9E4DB]/40">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="checkbox-use-range"
-                checked={useRange}
-                onChange={(e) => {
-                  setUseRange(e.target.checked);
-                  if (e.target.checked && !endDateStr) {
+          <div className="bg-[#FEF9F2]/60 p-3 rounded-2xl border border-[#E9E4DB]/40 space-y-2">
+            <span className="block text-xs font-bold text-[#5D554D]">⏰ 일정 유형 선택</span>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRange(false);
+                  setIsAllDay(true);
+                }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+                  !useRange && isAllDay
+                    ? 'bg-[#D97706] text-white border-[#D97706] shadow-sm'
+                    : 'bg-white text-[#5D554D] border-[#E9E4DB] hover:bg-[#FEF9F2]/50'
+                }`}
+              >
+                ☀️ 하루 종일 (1일)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRange(false);
+                  setIsAllDay(false);
+                }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+                  !useRange && !isAllDay
+                    ? 'bg-[#D97706] text-white border-[#D97706] shadow-sm'
+                    : 'bg-white text-[#5D554D] border-[#E9E4DB] hover:bg-[#FEF9F2]/50'
+                }`}
+              >
+                🕒 시간 지정 (1일)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRange(true);
+                  setIsAllDay(true);
+                  if (!endDateStr) {
                     setEndDateStr(selectedDateStr);
                   }
                 }}
-                className="w-4 h-4 text-[#D97706] focus:ring-[#D97706] border-gray-300 rounded"
-              />
-              <label htmlFor="checkbox-use-range" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
-                🗓️ 기간 선택 사용
-              </label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="checkbox-is-all-day"
-                checked={isAllDay}
-                onChange={(e) => {
-                  setIsAllDay(e.target.checked);
-                  if (e.target.checked) {
-                    setTimeStr('');
-                  }
-                }}
-                className="w-4 h-4 text-[#D97706] focus:ring-[#D97706] border-gray-300 rounded"
-              />
-              <label htmlFor="checkbox-is-all-day" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
-                🕒 종일 일정으로 설정
-              </label>
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+                  useRange
+                    ? 'bg-[#D97706] text-white border-[#D97706] shadow-sm'
+                    : 'bg-white text-[#5D554D] border-[#E9E4DB] hover:bg-[#FEF9F2]/50'
+                }`}
+              >
+                📅 기간 지정 (연일)
+              </button>
             </div>
           </div>
 
@@ -349,17 +378,26 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* 시간 선택 (종일 일정이 아닐 경우) */}
-            {!isAllDay && (
+            {!isAllDay && !useRange && (
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-[#5D554D]">시간 지정</label>
-                <input
-                  type="text"
-                  placeholder="예: 10:00, 14:00~16:00, 오후 2시"
-                  value={timeStr}
-                  onChange={(e) => setTimeStr(e.target.value)}
-                  className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
-                  required={!isAllDay}
-                />
+                <label className="block text-xs font-bold text-[#5D554D]">🕒 행사 시간 (시작 ~ 종료)</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
+                    required
+                  />
+                  <span className="text-xs text-gray-400">~</span>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
+                    required
+                  />
+                </div>
               </div>
             )}
 
@@ -463,41 +501,54 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
           </div>
 
           {/* 일정 옵션 (종일 & 기간 지정) */}
-          <div className="grid grid-cols-2 gap-3 bg-[#FEF9F2]/40 p-3 rounded-2xl border border-[#E9E4DB]/40">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="edit-checkbox-use-range"
-                checked={editUseRange}
-                onChange={(e) => {
-                  setEditUseRange(e.target.checked);
-                  if (e.target.checked && !editEndDateStr) {
+          <div className="bg-[#FEF9F2]/60 p-3 rounded-2xl border border-emerald-100 space-y-2">
+            <span className="block text-xs font-bold text-emerald-950">⏰ 일정 유형 선택</span>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditUseRange(false);
+                  setEditIsAllDay(true);
+                }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+                  !editUseRange && editIsAllDay
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                    : 'bg-white text-[#5D554D] border-gray-200 hover:bg-emerald-50'
+                }`}
+              >
+                ☀️ 하루 종일 (1일)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditUseRange(false);
+                  setEditIsAllDay(false);
+                }}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+                  !editUseRange && !editIsAllDay
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                    : 'bg-white text-[#5D554D] border-gray-200 hover:bg-emerald-50'
+                }`}
+              >
+                🕒 시간 지정 (1일)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditUseRange(true);
+                  setEditIsAllDay(true);
+                  if (!editEndDateStr) {
                     setEditEndDateStr(editSelectedDateStr);
                   }
                 }}
-                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-              />
-              <label htmlFor="edit-checkbox-use-range" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
-                🗓️ 기간 선택 사용
-              </label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="edit-checkbox-is-all-day"
-                checked={editIsAllDay}
-                onChange={(e) => {
-                  setEditIsAllDay(e.target.checked);
-                  if (e.target.checked) {
-                    setEditTimeStr('');
-                  }
-                }}
-                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-              />
-              <label htmlFor="edit-checkbox-is-all-day" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
-                🕒 종일 일정으로 설정
-              </label>
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+                  editUseRange
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
+                    : 'bg-white text-[#5D554D] border-gray-200 hover:bg-emerald-50'
+                }`}
+              >
+                📅 기간 지정 (연일)
+              </button>
             </div>
           </div>
 
@@ -537,17 +588,26 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* 시간 선택 (종일 일정이 아닐 경우) */}
-            {!editIsAllDay && (
+            {!editIsAllDay && !editUseRange && (
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-[#5D554D]">시간 지정</label>
-                <input
-                  type="text"
-                  placeholder="예: 10:00, 14:00~16:00"
-                  value={editTimeStr}
-                  onChange={(e) => setEditTimeStr(e.target.value)}
-                  className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
-                  required={!editIsAllDay}
-                />
+                <label className="block text-xs font-bold text-[#5D554D]">🕒 행사 시간 (시작 ~ 종료)</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="time"
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+                    required
+                  />
+                  <span className="text-xs text-gray-400">~</span>
+                  <input
+                    type="time"
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+                    required
+                  />
+                </div>
               </div>
             )}
 
@@ -816,6 +876,22 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
                       setEditUseRange(!!selectedEventDetails.endDate && selectedEventDetails.endDate !== selectedEventDetails.date);
                       setEditEndDateStr(selectedEventDetails.endDate || selectedEventDetails.date);
                       setEditIsAllDay(selectedEventDetails.isAllDay !== false);
+                      
+                      let startT = '09:00';
+                      let endT = '10:00';
+                      if (selectedEventDetails.startTime) {
+                        startT = selectedEventDetails.startTime;
+                      } else if (selectedEventDetails.time && selectedEventDetails.time.includes('~')) {
+                        const parts = selectedEventDetails.time.split('~');
+                        startT = parts[0].trim();
+                        endT = parts[1].trim();
+                      }
+                      if (selectedEventDetails.endTime) {
+                        endT = selectedEventDetails.endTime;
+                      }
+                      setEditStartTime(startT);
+                      setEditEndTime(endT);
+
                       setEditTimeStr(selectedEventDetails.time || '');
                       setEditLocation(selectedEventDetails.location || '');
                       setEditMaterials(selectedEventDetails.materials || '');

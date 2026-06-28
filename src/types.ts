@@ -49,6 +49,8 @@ export interface CalendarEvent {
   endDate?: string; // 종료 날짜 YYYY-MM-DD (기간 선택 시, 선택적)
   isAllDay?: boolean; // 종일 일정 여부
   time?: string; // 시간 선택 (예: "10:00" 또는 "14:00 ~ 16:00")
+  startTime?: string; // 시작 시간 (예: "10:00")
+  endTime?: string; // 종료 시간 (예: "12:00")
   location?: string; // 장소 입력 (선택사항)
   materials?: string; // 준비물 (선택)
   extra?: string; // 기타 (선택)
