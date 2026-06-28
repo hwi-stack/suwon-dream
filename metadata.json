@@ -1,0 +1,6 @@
+{
+  "name": "꿈이음 소통방",
+  "description": "수원시장애인종합복지관 주간이용시설 꿈이음을 위한 소통 및 알림장 웹앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
