@@ -123,7 +123,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
       receiverName: receiver.role === 'parent' && receiver.patientName 
         ? `${receiver.name} (${receiver.patientName} 보호자)` 
         : receiver.name,
-      mood: currentUser.role === 'staff' ? selectedMood : undefined, // 오직 직원일때만 기분카드 저장
+      mood: (currentUser.role === 'staff' || currentUser.role === 'parent') ? selectedMood : undefined, // 직원 및 보호자 기분카드 저장
       images: selectedImages,
       likes: [],
       createdAt: new Date().toISOString(),
@@ -186,7 +186,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
           ...rep,
           title: editTitle.trim(),
           content: editContent.trim(),
-          mood: rep.writerRole === 'staff' ? editMood : undefined,
+          mood: (rep.writerRole === 'staff' || rep.writerRole === 'parent') ? editMood : undefined,
         };
       }
       return rep;
@@ -432,9 +432,10 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
         </div>
       </div>
 
-      {/* 새 알림장 쓰기 양식 */}
+      {/* 새 알림장 쓰기 양식 (모달로 시각적 완벽 격리) */}
       {isWriting && (
-        <form onSubmit={handleCreateReport} className="bg-white p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-md animate-fadeIn" id="write-report-form">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <form onSubmit={handleCreateReport} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="write-report-form">
           <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
             <span className="font-bold text-[#4A443F] text-sm flex items-center gap-1.5">
               💌 사랑이 담긴 알림장 쓰기
@@ -471,8 +472,8 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
             </select>
           </div>
 
-          {/* 기분 카드 선택 (직원 전용) */}
-          {currentUser.role === 'staff' && (
+          {/* 기분 카드 선택 (직원 및 보호자 공동) */}
+          {(currentUser.role === 'staff' || currentUser.role === 'parent') && (
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#5D554D]">
                 ⭐ 오늘의 기분 및 상태 리포트 (보호자 전달용)
@@ -590,23 +591,25 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
             </button>
           </div>
         </form>
+        </div>
       )}
 
-      {/* 알림장 수정 양식 */}
+      {/* 알림장 수정 양식 (모달로 시각적 완벽 격리) */}
       {editingReport && (
-        <form onSubmit={handleSaveEdit} className="bg-white p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-md animate-fadeIn" id="edit-report-form">
-          <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
-            <span className="font-serif font-bold text-[#D97706] text-sm">
-              ✏️ 알림장 수정하기
-            </span>
-            <button
-              type="button"
-              onClick={() => setEditingReport(null)}
-              className="text-[#928B81] hover:text-[#4A443F] text-xs font-bold"
-            >
-              닫기 ✖️
-            </button>
-          </div>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <form onSubmit={handleSaveEdit} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="edit-report-form">
+            <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
+              <span className="font-serif font-bold text-[#D97706] text-sm">
+                ✏️ 알림장 수정하기
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditingReport(null)}
+                className="text-[#928B81] hover:text-[#4A443F] text-xs font-bold"
+              >
+                닫기 ✖️
+              </button>
+            </div>
 
           <div>
             <label className="block text-xs font-bold text-[#5D554D] mb-1">제목</label>
@@ -630,8 +633,8 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
             />
           </div>
 
-          {/* 기분 카드 선택 (직원 작성 글이고 직원으로 접속 중일때만) */}
-          {editingReport.writerRole === 'staff' && currentUser.role === 'staff' && (
+          {/* 기분 카드 선택 (직원 및 보호자 공동) */}
+          {(editingReport.writerRole === 'staff' || editingReport.writerRole === 'parent') && (currentUser.role === 'staff' || currentUser.role === 'parent') && (
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#5D554D]">
                 ⭐ 오늘의 기분 및 상태 리포트 수정
@@ -675,6 +678,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
             </button>
           </div>
         </form>
+        </div>
       )}
 
       {/* 알림장 목록 */}
@@ -708,10 +712,10 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
                       {rep.writerRole === 'staff' ? '👩‍🏫' : '👪'}
                     </span>
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-[#4A443F]">{rep.writerName}</span>
-                        <span className="text-[10px] text-[#928B81] font-semibold">➡️</span>
-                        <span className="font-bold text-xs text-[#4A443F]">{rep.receiverName}</span>
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 max-w-[240px] xs:max-w-xs sm:max-w-md">
+                        <span className="font-bold text-xs text-[#4A443F] whitespace-normal leading-tight">{rep.writerName}</span>
+                        <span className="text-[10px] text-[#928B81] font-semibold flex-shrink-0">➡️</span>
+                        <span className="font-bold text-xs text-[#4A443F] whitespace-normal leading-tight">{rep.receiverName}</span>
                       </div>
                       <span className="text-[9px] text-[#928B81] block mt-0.5">
                         {new Date(rep.createdAt).toLocaleString('ko-KR', {

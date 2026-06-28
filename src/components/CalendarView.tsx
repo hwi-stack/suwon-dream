@@ -47,6 +47,8 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
 
   // 날짜 선택 상세 보기 팝업 상태
   const [selectedEventDetails, setSelectedEventDetails] = useState<CalendarEvent | null>(null);
+  const [selectedDateEvents, setSelectedDateEvents] = useState<CalendarEvent[] | null>(null);
+  const [selectedDateLabel, setSelectedDateLabel] = useState('');
 
   useEffect(() => {
     setEvents(storage.getEvents());
@@ -740,7 +742,8 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
                 key={idx}
                 onClick={() => {
                   if (dateEvents.length > 0) {
-                    setSelectedEventDetails(dateEvents[0]); // 첫 일정 띄워주기
+                    setSelectedDateEvents(dateEvents);
+                    setSelectedDateLabel(`${currentYear}년 ${currentMonth}월 ${day}일`);
                   } else if (currentUser.role === 'staff' || currentUser.role === 'admin') {
                     // 일정이 없는 빈 칸은 직원일 경우 새 일정 작성창 유도
                     setIsWriting(true);
@@ -784,132 +787,132 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
       </div>
 
       {/* 일정 상세 정보 팝업 모달 */}
-      {selectedEventDetails && (
+      {selectedDateEvents && selectedDateEvents.length > 0 && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-xl p-5 border border-[#E9E4DB] space-y-4 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
-              <span className="text-[10px] font-bold text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-full">
-                📅 꿈이음 일정 상세
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-xl p-5 border border-[#E9E4DB] space-y-4 animate-scaleUp max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2 flex-shrink-0">
+              <span className="text-[11px] font-bold text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] px-2.5 py-1 rounded-full">
+                📅 {selectedDateLabel} 일정 목록 ({selectedDateEvents.length}건)
               </span>
               <button
-                onClick={() => setSelectedEventDetails(null)}
-                className="text-[#928B81] hover:text-[#4A443F] text-xs font-bold"
+                onClick={() => setSelectedDateEvents(null)}
+                className="text-[#928B81] hover:text-[#4A443F] text-xs font-bold px-1.5 py-1"
               >
                 닫기 ✕
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs text-[#4A443F]">
-              <div>
-                <span className="block text-[10px] text-[#928B81] font-bold">일정 일자 / 기간</span>
-                <span className="font-bold text-xs text-[#4A443F] flex items-center gap-1.5 mt-0.5">
-                  <span>📅</span> {selectedEventDetails.date}
-                  {selectedEventDetails.endDate && selectedEventDetails.endDate !== selectedEventDetails.date && (
-                    <> ~ {selectedEventDetails.endDate}</>
-                  )}
-                </span>
-              </div>
+            {/* 일정 리스트 (스크롤 가능) */}
+            <div className="overflow-y-auto space-y-4 flex-1 pr-1" style={{ maxHeight: '60vh' }}>
+              {selectedDateEvents.map((event, evIdx) => {
+                return (
+                  <div key={event.id} className="p-4 bg-[#FEF9F2]/40 rounded-2xl border border-[#E9E4DB]/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-serif font-bold text-sm text-[#D97706]">
+                        {evIdx + 1}. {event.title}
+                      </span>
+                      {/* 일정이 여러 개일 경우 각 시작/종료 시간 뱃지 */}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">
+                        {event.isAllDay ? '하루 종일 ☀️' : event.time || '시간 미정'}
+                      </span>
+                    </div>
 
-              {/* 시간 및 장소 표시 */}
-              <div className="grid grid-cols-2 gap-2 bg-[#FEF9F2]/60 p-2.5 rounded-2xl border border-[#E9E4DB]/40">
-                <div>
-                  <span className="block text-[9px] text-[#928B81] font-bold">🕒 시간</span>
-                  <span className="font-bold text-[11px] text-[#4A443F] mt-0.5 block">
-                    {selectedEventDetails.isAllDay ? (
-                      <span className="text-emerald-600">하루 종일 ☀️</span>
-                    ) : (
-                      selectedEventDetails.time || '지정 없음'
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-[#4A443F]">
+                      <div className="bg-white/80 p-2 rounded-xl border border-[#E9E4DB]/40">
+                        <span className="block text-[9px] text-[#928B81] font-bold">📍 장소</span>
+                        <span className="font-bold mt-0.5 truncate block">{event.location || '원내 활동 🏠'}</span>
+                      </div>
+                      <div className="bg-white/80 p-2 rounded-xl border border-[#E9E4DB]/40">
+                        <span className="block text-[9px] text-[#928B81] font-bold">📅 일자/기간</span>
+                        <span className="font-bold mt-0.5 block">
+                          {event.date}
+                          {event.endDate && event.endDate !== event.date && ` ~ ${event.endDate}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-xs">
+                      <span className="block text-[10px] text-[#928B81] font-bold mb-1">상세 내용</span>
+                      <p className="bg-white/50 p-2.5 rounded-xl border border-[#E9E4DB]/30 whitespace-pre-line leading-relaxed text-[#5D554D]">
+                        {event.content}
+                      </p>
+                    </div>
+
+                    {event.materials && (
+                      <div className="text-xs">
+                        <span className="block text-[10px] text-[#D97706] font-bold">🎒 준비물</span>
+                        <span className="font-bold text-[#92400E] block mt-0.5">{event.materials}</span>
+                      </div>
                     )}
-                  </span>
-                </div>
 
-                <div>
-                  <span className="block text-[9px] text-[#928B81] font-bold">📍 장소</span>
-                  <span className="font-bold text-[11px] text-[#4A443F] mt-0.5 truncate block">
-                    {selectedEventDetails.location || '원내 활동 🏠'}
-                  </span>
-                </div>
-              </div>
+                    {event.extra && (
+                      <div className="bg-[#FAF9F6] p-2 rounded-xl border border-[#E9E4DB] text-[10px] text-[#928B81] italic">
+                        ※ {event.extra}
+                      </div>
+                    )}
 
-              <div>
-                <span className="block text-[10px] text-[#928B81] font-bold">일정 제목</span>
-                <span className="font-serif font-bold text-sm text-[#D97706] mt-0.5 block">{selectedEventDetails.title}</span>
-              </div>
+                    {/* 작성자 전용 일정 제어 */}
+                    {(currentUser.id === event.writerId || currentUser.role === 'admin') && (
+                      <div className="flex justify-end gap-1.5 pt-2 border-t border-[#E9E4DB]/30">
+                        <button
+                          onClick={() => {
+                            setEditingEvent(event);
+                            setEditTitle(event.title);
+                            setEditContent(event.content);
+                            setEditSelectedDateStr(event.date);
+                            setEditUseRange(!!event.endDate && event.endDate !== event.date);
+                            setEditEndDateStr(event.endDate || event.date);
+                            setEditIsAllDay(event.isAllDay !== false);
+                            
+                            let startT = '09:00';
+                            let endT = '10:00';
+                            if (event.startTime) {
+                              startT = event.startTime;
+                            } else if (event.time && event.time.includes('~')) {
+                              const parts = event.time.split('~');
+                              startT = parts[0].trim();
+                              endT = parts[1].trim();
+                            }
+                            if (event.endTime) {
+                              endT = event.endTime;
+                            }
+                            setEditStartTime(startT);
+                            setEditEndTime(endT);
 
-              <div>
-                <span className="block text-[10px] text-[#928B81] font-bold">상세 내용</span>
-                <p className="bg-[#FEF9F2]/30 p-3 rounded-2xl border border-[#E9E4DB]/40 whitespace-pre-line leading-relaxed text-[#5D554D] mt-0.5">
-                  {selectedEventDetails.content}
-                </p>
-              </div>
-
-              {selectedEventDetails.materials && (
-                <div>
-                  <span className="block text-[10px] text-[#D97706] font-bold">🎒 준비물</span>
-                  <span className="font-bold text-xs text-[#92400E] block mt-0.5">{selectedEventDetails.materials}</span>
-                </div>
-              )}
-
-              {selectedEventDetails.extra && (
-                <div className="bg-[#FAF9F6] p-2.5 rounded-xl border border-[#E9E4DB] text-[10px] text-[#928B81] italic mt-0.5">
-                  ※ {selectedEventDetails.extra}
-                </div>
-              )}
+                            setEditTimeStr(event.time || '');
+                            setEditLocation(event.location || '');
+                            setEditMaterials(event.materials || '');
+                            setEditExtra(event.extra || '');
+                            
+                            setSelectedDateEvents(null);
+                          }}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-100"
+                        >
+                          수정
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDeleteEvent(event.id, event.writerId);
+                            setSelectedDateEvents(null);
+                          }}
+                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[10px] rounded-lg border border-rose-100"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-             {/* 일정 제어 */}
-            <div className="flex gap-2 pt-2 border-t border-[#E9E4DB]/40">
+            <div className="pt-2 border-t border-[#E9E4DB]/40 flex-shrink-0">
               <button
-                onClick={() => setSelectedEventDetails(null)}
-                className="flex-1 py-2.5 bg-[#D97706] hover:bg-[#92400E] text-white font-bold text-xs rounded-xl shadow-sm"
+                onClick={() => setSelectedDateEvents(null)}
+                className="w-full py-2.5 bg-[#D97706] hover:bg-[#92400E] text-white font-bold text-xs rounded-xl shadow-sm"
               >
                 확인 완료 👍
               </button>
-              {(currentUser.id === selectedEventDetails.writerId || currentUser.role === 'admin') && (
-                <>
-                  <button
-                    onClick={() => {
-                      setEditingEvent(selectedEventDetails);
-                      setEditTitle(selectedEventDetails.title);
-                      setEditContent(selectedEventDetails.content);
-                      setEditSelectedDateStr(selectedEventDetails.date);
-                      setEditUseRange(!!selectedEventDetails.endDate && selectedEventDetails.endDate !== selectedEventDetails.date);
-                      setEditEndDateStr(selectedEventDetails.endDate || selectedEventDetails.date);
-                      setEditIsAllDay(selectedEventDetails.isAllDay !== false);
-                      
-                      let startT = '09:00';
-                      let endT = '10:00';
-                      if (selectedEventDetails.startTime) {
-                        startT = selectedEventDetails.startTime;
-                      } else if (selectedEventDetails.time && selectedEventDetails.time.includes('~')) {
-                        const parts = selectedEventDetails.time.split('~');
-                        startT = parts[0].trim();
-                        endT = parts[1].trim();
-                      }
-                      if (selectedEventDetails.endTime) {
-                        endT = selectedEventDetails.endTime;
-                      }
-                      setEditStartTime(startT);
-                      setEditEndTime(endT);
-
-                      setEditTimeStr(selectedEventDetails.time || '');
-                      setEditLocation(selectedEventDetails.location || '');
-                      setEditMaterials(selectedEventDetails.materials || '');
-                      setEditExtra(selectedEventDetails.extra || '');
-                      setSelectedEventDetails(null);
-                    }}
-                    className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-100"
-                  >
-                    수정
-                  </button>
-                  <button
-                    onClick={() => handleDeleteEvent(selectedEventDetails.id, selectedEventDetails.writerId)}
-                    className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-100"
-                  >
-                    일정 삭제
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </div>

@@ -188,18 +188,18 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
     <div className={`space-y-4 ${fontSizeClass}`} id="notice-list-tab">
       
       {/* 상단 타이틀 */}
-      <div className="bg-white p-4 rounded-3xl border border-amber-100 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">📢</span>
-          <div>
-            <h1 className="text-base font-bold text-amber-950">꿈이음 공지사항</h1>
-            <p className="text-[11px] text-amber-900/50">중요한 소식 및 복지관 운영 정보를 전해드립니다.</p>
+      <div className="bg-white p-4 rounded-3xl border border-amber-100 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-2xl flex-shrink-0">📢</span>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-amber-950 truncate">꿈이음 공지사항</h1>
+            <p className="text-[10px] sm:text-[11px] text-amber-900/60 leading-tight truncate">복지관 운영 정보를 전해드립니다.</p>
           </div>
         </div>
         {!isWriting && (currentUser.role === 'staff' || currentUser.role === 'admin') && (
           <button
             onClick={() => setIsWriting(true)}
-            className="bg-emerald-400 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-2xl shadow-sm transition-all"
+            className="bg-emerald-400 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-2xl shadow-sm transition-all whitespace-nowrap flex-shrink-0"
             id="btn-trigger-write-notice"
           >
             ➕ 새 공지
@@ -207,9 +207,10 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
         )}
       </div>
 
-      {/* 새 공지사항 작성 양식 (직원만) */}
+      {/* 새 공지사항 작성 양식 (모달로 시각적 완벽 격리) */}
       {isWriting && (
-        <form onSubmit={handleCreateNotice} className="bg-white p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-md animate-fadeIn" id="write-notice-form">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <form onSubmit={handleCreateNotice} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="write-notice-form">
           <div className="flex items-center justify-between border-b border-amber-50 pb-2">
             <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
               📢 새 공지사항 작성하기
@@ -278,11 +279,13 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
             </button>
           </div>
         </form>
+        </div>
       )}
 
-      {/* 공지사항 수정 양식 */}
+      {/* 공지사항 수정 양식 (모달로 시각적 완벽 격리) */}
       {editingNotice && (
-        <form onSubmit={handleSaveEditNotice} className="bg-white p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-md animate-fadeIn" id="edit-notice-form">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <form onSubmit={handleSaveEditNotice} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="edit-notice-form">
           <div className="flex items-center justify-between border-b border-amber-50 pb-2">
             <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
               📢 공지사항 수정하기
@@ -344,6 +347,7 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
             </button>
           </div>
         </form>
+        </div>
       )}
 
       {/* 공지사항 피드 */}

@@ -254,9 +254,10 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
         )}
       </div>
 
-      {/* 앨범 작성 양식 (직원만 작성 가능) */}
+      {/* 앨범 작성 양식 (모달로 시각적 완벽 격리) */}
       {isWriting && (
-        <form onSubmit={handleCreateAlbum} className="bg-white p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-md animate-fadeIn" id="write-album-form">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <form onSubmit={handleCreateAlbum} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="write-album-form">
           <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
             <span className="font-bold text-[#4A443F] text-sm flex items-center gap-1.5">
               📸 새 활동 앨범 등록하기
@@ -360,11 +361,13 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
             </button>
           </div>
         </form>
+        </div>
       )}
 
-      {/* 앨범 수정 양식 */}
+      {/* 앨범 수정 양식 (모달로 시각적 완벽 격리) */}
       {editingAlbum && (
-        <form onSubmit={handleSaveEditAlbum} className="bg-white p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-md animate-fadeIn" id="edit-album-form">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <form onSubmit={handleSaveEditAlbum} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="edit-album-form">
           <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
             <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
               📸 활동 앨범 수정하기
@@ -464,6 +467,7 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
             </button>
           </div>
         </form>
+        </div>
       )}
 
       {/* 앨범 그리드 피드 */}
