@@ -19,9 +19,27 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedDateStr, setSelectedDateStr] = useState('');
+  const [useRange, setUseRange] = useState(false);
+  const [endDateStr, setEndDateStr] = useState('');
+  const [isAllDay, setIsAllDay] = useState(true);
+  const [timeStr, setTimeStr] = useState('');
+  const [location, setLocation] = useState('');
   const [materials, setMaterials] = useState('');
   const [extra, setExtra] = useState('');
   const [writeError, setWriteError] = useState('');
+
+  // 일정 수정 폼 상태
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editSelectedDateStr, setEditSelectedDateStr] = useState('');
+  const [editUseRange, setEditUseRange] = useState(false);
+  const [editEndDateStr, setEditEndDateStr] = useState('');
+  const [editIsAllDay, setEditIsAllDay] = useState(true);
+  const [editTimeStr, setEditTimeStr] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editMaterials, setEditMaterials] = useState('');
+  const [editExtra, setEditExtra] = useState('');
 
   // 날짜 선택 상세 보기 팝업 상태
   const [selectedEventDetails, setSelectedEventDetails] = useState<CalendarEvent | null>(null);
@@ -46,11 +64,25 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
       return;
     }
 
+    if (useRange && !endDateStr) {
+      setWriteError('종료 날짜를 지정해 주세요. 📅');
+      return;
+    }
+
+    if (useRange && endDateStr < selectedDateStr) {
+      setWriteError('종료 날짜는 시작 날짜보다 빠를 수 없습니다. 📅');
+      return;
+    }
+
     const newEvent: CalendarEvent = {
       id: `event-${Date.now()}`,
       title: title.trim(),
       content: content.trim(),
       date: selectedDateStr,
+      endDate: useRange ? endDateStr : undefined,
+      isAllDay,
+      time: !isAllDay && timeStr.trim() ? timeStr.trim() : undefined,
+      location: location.trim() || undefined,
       materials: materials.trim() || undefined,
       extra: extra.trim() || undefined,
       writerId: currentUser.id,
@@ -66,6 +98,11 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
     setTitle('');
     setContent('');
     setSelectedDateStr('');
+    setEndDateStr('');
+    setUseRange(false);
+    setIsAllDay(true);
+    setTimeStr('');
+    setLocation('');
     setMaterials('');
     setExtra('');
     setIsWriting(false);
@@ -92,6 +129,50 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
       setSelectedEventDetails(null);
       alert('일정이 삭제되었습니다. 🗑️');
     }
+  };
+
+  const handleSaveEditEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent) return;
+
+    if (!editTitle.trim() || !editContent.trim()) {
+      alert('제목과 내용을 모두 입력해 주세요. 📝');
+      return;
+    }
+
+    if (editUseRange && !editEndDateStr) {
+      alert('종료 날짜를 지정해 주세요. 📅');
+      return;
+    }
+
+    if (editUseRange && editEndDateStr < editSelectedDateStr) {
+      alert('종료 날짜는 시작 날짜보다 빠를 수 없습니다. 📅');
+      return;
+    }
+
+    const updated = events.map((ev) => {
+      if (ev.id === editingEvent.id) {
+        return {
+          ...ev,
+          title: editTitle.trim(),
+          content: editContent.trim(),
+          date: editSelectedDateStr,
+          endDate: editUseRange ? editEndDateStr : undefined,
+          isAllDay: editIsAllDay,
+          time: !editIsAllDay && editTimeStr.trim() ? editTimeStr.trim() : undefined,
+          location: editLocation.trim() || undefined,
+          materials: editMaterials.trim() || undefined,
+          extra: editExtra.trim() || undefined,
+        };
+      }
+      return ev;
+    });
+
+    storage.saveEvents(updated);
+    setEvents(updated);
+    setEditingEvent(null);
+    setSelectedEventDetails(null);
+    alert('일정이 성공적으로 수정되었습니다! ✨');
   };
 
   // 월별 이동
@@ -138,7 +219,11 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
   // 특정 날짜의 일정 목록 가져오기
   const getEventsForDate = (day: number) => {
     const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return events.filter((e) => e.date === dateStr);
+    return events.filter((e) => {
+      const start = e.date;
+      const end = e.endDate || e.date;
+      return dateStr >= start && dateStr <= end;
+    });
   };
 
   return (
@@ -157,7 +242,13 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
           <button
             onClick={() => {
               setIsWriting(true);
-              setSelectedDateStr(`${currentYear}-${String(currentMonth).padStart(2, '0')}-01`);
+              const defaultDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+              setSelectedDateStr(defaultDate);
+              setEndDateStr(defaultDate);
+              setUseRange(false);
+              setIsAllDay(true);
+              setTimeStr('');
+              setLocation('');
             }}
             className="bg-[#D97706] hover:bg-[#92400E] text-white font-bold text-xs px-3.5 py-2 rounded-2xl shadow-sm transition-all"
             id="btn-trigger-write-event"
@@ -183,29 +274,118 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-bold text-[#5D554D] mb-1">일정 일자</label>
+          {/* 새 일정 옵션 (종일 & 기간 지정) */}
+          <div className="grid grid-cols-2 gap-3 bg-[#FEF9F2]/40 p-3 rounded-2xl border border-[#E9E4DB]/40">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="checkbox-use-range"
+                checked={useRange}
+                onChange={(e) => {
+                  setUseRange(e.target.checked);
+                  if (e.target.checked && !endDateStr) {
+                    setEndDateStr(selectedDateStr);
+                  }
+                }}
+                className="w-4 h-4 text-[#D97706] focus:ring-[#D97706] border-gray-300 rounded"
+              />
+              <label htmlFor="checkbox-use-range" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
+                🗓️ 기간 선택 사용
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="checkbox-is-all-day"
+                checked={isAllDay}
+                onChange={(e) => {
+                  setIsAllDay(e.target.checked);
+                  if (e.target.checked) {
+                    setTimeStr('');
+                  }
+                }}
+                className="w-4 h-4 text-[#D97706] focus:ring-[#D97706] border-gray-300 rounded"
+              />
+              <label htmlFor="checkbox-is-all-day" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
+                🕒 종일 일정으로 설정
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* 날짜 선택 */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#5D554D]">
+                {useRange ? '시작 일자' : '일정 일자'}
+              </label>
               <input
                 type="date"
                 value={selectedDateStr}
-                onChange={(e) => setSelectedDateStr(e.target.value)}
-                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
+                onChange={(e) => {
+                  setSelectedDateStr(e.target.value);
+                  if (!useRange || !endDateStr || endDateStr < e.target.value) {
+                    setEndDateStr(e.target.value);
+                  }
+                }}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-[#5D554D] mb-1">일정 제목</label>
+            {useRange && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#5D554D]">종료 일자</label>
+                <input
+                  type="date"
+                  value={endDateStr}
+                  onChange={(e) => setEndDateStr(e.target.value)}
+                  className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
+                  required
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* 시간 선택 (종일 일정이 아닐 경우) */}
+            {!isAllDay && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#5D554D]">시간 지정</label>
+                <input
+                  type="text"
+                  placeholder="예: 10:00, 14:00~16:00, 오후 2시"
+                  value={timeStr}
+                  onChange={(e) => setTimeStr(e.target.value)}
+                  className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
+                  required={!isAllDay}
+                />
+              </div>
+            )}
+
+            {/* 장소 입력 (선택사항) */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#5D554D]">활동 장소 (선택)</label>
               <input
                 type="text"
-                placeholder="예: 야외 꽃 나들이 🌸"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
-                required
+                placeholder="예: 꿈이음 2층 강당, 하늘공원"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#D97706] text-[#4A443F]"
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[#5D554D]">일정 제목</label>
+            <input
+              type="text"
+              placeholder="예: 야외 꽃 나들이 🌸"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
+              required
+            />
           </div>
 
           <div>
@@ -258,6 +438,190 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
             <button
               type="button"
               onClick={() => setIsWriting(false)}
+              className="px-4 py-2.5 bg-[#FAF9F6] hover:bg-[#E9E4DB] text-[#5D554D] border border-[#E9E4DB] font-bold text-xs rounded-xl"
+            >
+              취소
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* 일정 수정 양식 */}
+      {editingEvent && (
+        <form onSubmit={handleSaveEditEvent} className="bg-white p-5 rounded-3xl border-2 border-emerald-100 space-y-3.5 shadow-md animate-fadeIn" id="edit-event-form">
+          <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
+            <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
+              📅 일정 수정하기
+            </span>
+            <button
+              type="button"
+              onClick={() => setEditingEvent(null)}
+              className="text-[#928B81] hover:text-[#4A443F] text-xs font-bold"
+            >
+              닫기 ✕
+            </button>
+          </div>
+
+          {/* 일정 옵션 (종일 & 기간 지정) */}
+          <div className="grid grid-cols-2 gap-3 bg-[#FEF9F2]/40 p-3 rounded-2xl border border-[#E9E4DB]/40">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit-checkbox-use-range"
+                checked={editUseRange}
+                onChange={(e) => {
+                  setEditUseRange(e.target.checked);
+                  if (e.target.checked && !editEndDateStr) {
+                    setEditEndDateStr(editSelectedDateStr);
+                  }
+                }}
+                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+              />
+              <label htmlFor="edit-checkbox-use-range" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
+                🗓️ 기간 선택 사용
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit-checkbox-is-all-day"
+                checked={editIsAllDay}
+                onChange={(e) => {
+                  setEditIsAllDay(e.target.checked);
+                  if (e.target.checked) {
+                    setEditTimeStr('');
+                  }
+                }}
+                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+              />
+              <label htmlFor="edit-checkbox-is-all-day" className="text-xs font-bold text-[#5D554D] cursor-pointer select-none">
+                🕒 종일 일정으로 설정
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* 날짜 선택 */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#5D554D]">
+                {editUseRange ? '시작 일자' : '일정 일자'}
+              </label>
+              <input
+                type="date"
+                value={editSelectedDateStr}
+                onChange={(e) => {
+                  setEditSelectedDateStr(e.target.value);
+                  if (!editUseRange || !editEndDateStr || editEndDateStr < e.target.value) {
+                    setEditEndDateStr(e.target.value);
+                  }
+                }}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+                required
+              />
+            </div>
+
+            {editUseRange && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#5D554D]">종료 일자</label>
+                <input
+                  type="date"
+                  value={editEndDateStr}
+                  onChange={(e) => setEditEndDateStr(e.target.value)}
+                  className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+                  required
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* 시간 선택 (종일 일정이 아닐 경우) */}
+            {!editIsAllDay && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-[#5D554D]">시간 지정</label>
+                <input
+                  type="text"
+                  placeholder="예: 10:00, 14:00~16:00"
+                  value={editTimeStr}
+                  onChange={(e) => setEditTimeStr(e.target.value)}
+                  className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+                  required={!editIsAllDay}
+                />
+              </div>
+            )}
+
+            {/* 장소 입력 (선택사항) */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[#5D554D]">활동 장소 (선택)</label>
+              <input
+                type="text"
+                placeholder="예: 꿈이음 2층 강당, 하늘공원"
+                value={editLocation}
+                onChange={(e) => setEditLocation(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 text-[#4A443F]"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[#5D554D]">일정 제목</label>
+            <input
+              type="text"
+              placeholder="예: 야외 꽃 나들이 🌸"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#5D554D] mb-1">활동 상세 내용</label>
+            <textarea
+              placeholder="일정 활동 계획과 진행 내용에 관해 기록해 주세요..."
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={4}
+              className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-3 text-xs focus:outline-none focus:border-emerald-500 leading-normal text-[#4A443F]"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-bold text-[#5D554D] mb-1">준비물 (선택)</label>
+              <input
+                type="text"
+                placeholder="예: 편한 운동화, 모자"
+                value={editMaterials}
+                onChange={(e) => setEditMaterials(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-emerald-500 text-[#4A443F]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#5D554D] mb-1">기타 참고사항 (선택)</label>
+              <input
+                type="text"
+                placeholder="예: 우천 시 일정 순연"
+                value={editExtra}
+                onChange={(e) => setEditExtra(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-emerald-500 text-[#4A443F]"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-sm"
+            >
+              수정 완료 ✨
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingEvent(null)}
               className="px-4 py-2.5 bg-[#FAF9F6] hover:bg-[#E9E4DB] text-[#5D554D] border border-[#E9E4DB] font-bold text-xs rounded-xl"
             >
               취소
@@ -320,7 +684,13 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
                   } else if (currentUser.role === 'staff' || currentUser.role === 'admin') {
                     // 일정이 없는 빈 칸은 직원일 경우 새 일정 작성창 유도
                     setIsWriting(true);
-                    setSelectedDateStr(`${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+                    const clickedDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    setSelectedDateStr(clickedDate);
+                    setEndDateStr(clickedDate);
+                    setUseRange(false);
+                    setIsAllDay(true);
+                    setTimeStr('');
+                    setLocation('');
                   }
                 }}
                 className={`relative aspect-square border border-[#E9E4DB]/40 rounded-xl flex flex-col justify-between p-1 cursor-pointer transition-all ${
@@ -371,18 +741,44 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
 
             <div className="space-y-3.5 text-xs text-[#4A443F]">
               <div>
-                <span className="block text-[10px] text-[#928B81] font-bold">일정 일자</span>
-                <span className="font-bold text-sm text-[#4A443F]">{selectedEventDetails.date}</span>
+                <span className="block text-[10px] text-[#928B81] font-bold">일정 일자 / 기간</span>
+                <span className="font-bold text-xs text-[#4A443F] flex items-center gap-1.5 mt-0.5">
+                  <span>📅</span> {selectedEventDetails.date}
+                  {selectedEventDetails.endDate && selectedEventDetails.endDate !== selectedEventDetails.date && (
+                    <> ~ {selectedEventDetails.endDate}</>
+                  )}
+                </span>
+              </div>
+
+              {/* 시간 및 장소 표시 */}
+              <div className="grid grid-cols-2 gap-2 bg-[#FEF9F2]/60 p-2.5 rounded-2xl border border-[#E9E4DB]/40">
+                <div>
+                  <span className="block text-[9px] text-[#928B81] font-bold">🕒 시간</span>
+                  <span className="font-bold text-[11px] text-[#4A443F] mt-0.5 block">
+                    {selectedEventDetails.isAllDay ? (
+                      <span className="text-emerald-600">하루 종일 ☀️</span>
+                    ) : (
+                      selectedEventDetails.time || '지정 없음'
+                    )}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="block text-[9px] text-[#928B81] font-bold">📍 장소</span>
+                  <span className="font-bold text-[11px] text-[#4A443F] mt-0.5 truncate block">
+                    {selectedEventDetails.location || '원내 활동 🏠'}
+                  </span>
+                </div>
               </div>
 
               <div>
                 <span className="block text-[10px] text-[#928B81] font-bold">일정 제목</span>
-                <span className="font-serif font-bold text-sm text-[#D97706]">{selectedEventDetails.title}</span>
+                <span className="font-serif font-bold text-sm text-[#D97706] mt-0.5 block">{selectedEventDetails.title}</span>
               </div>
 
               <div>
                 <span className="block text-[10px] text-[#928B81] font-bold">상세 내용</span>
-                <p className="bg-[#FEF9F2]/60 p-3 rounded-2xl border border-[#E9E4DB]/40 whitespace-pre-line leading-relaxed text-[#5D554D]">
+                <p className="bg-[#FEF9F2]/30 p-3 rounded-2xl border border-[#E9E4DB]/40 whitespace-pre-line leading-relaxed text-[#5D554D] mt-0.5">
                   {selectedEventDetails.content}
                 </p>
               </div>
@@ -390,18 +786,18 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
               {selectedEventDetails.materials && (
                 <div>
                   <span className="block text-[10px] text-[#D97706] font-bold">🎒 준비물</span>
-                  <span className="font-bold text-xs text-[#92400E]">{selectedEventDetails.materials}</span>
+                  <span className="font-bold text-xs text-[#92400E] block mt-0.5">{selectedEventDetails.materials}</span>
                 </div>
               )}
 
               {selectedEventDetails.extra && (
-                <div className="bg-[#FAF9F6] p-2.5 rounded-xl border border-[#E9E4DB] text-[10px] text-[#928B81] italic">
+                <div className="bg-[#FAF9F6] p-2.5 rounded-xl border border-[#E9E4DB] text-[10px] text-[#928B81] italic mt-0.5">
                   ※ {selectedEventDetails.extra}
                 </div>
               )}
             </div>
 
-            {/* 일정 제어 */}
+             {/* 일정 제어 */}
             <div className="flex gap-2 pt-2 border-t border-[#E9E4DB]/40">
               <button
                 onClick={() => setSelectedEventDetails(null)}
@@ -410,12 +806,33 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
                 확인 완료 👍
               </button>
               {(currentUser.id === selectedEventDetails.writerId || currentUser.role === 'admin') && (
-                <button
-                  onClick={() => handleDeleteEvent(selectedEventDetails.id, selectedEventDetails.writerId)}
-                  className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-100"
-                >
-                  일정 삭제
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setEditingEvent(selectedEventDetails);
+                      setEditTitle(selectedEventDetails.title);
+                      setEditContent(selectedEventDetails.content);
+                      setEditSelectedDateStr(selectedEventDetails.date);
+                      setEditUseRange(!!selectedEventDetails.endDate && selectedEventDetails.endDate !== selectedEventDetails.date);
+                      setEditEndDateStr(selectedEventDetails.endDate || selectedEventDetails.date);
+                      setEditIsAllDay(selectedEventDetails.isAllDay !== false);
+                      setEditTimeStr(selectedEventDetails.time || '');
+                      setEditLocation(selectedEventDetails.location || '');
+                      setEditMaterials(selectedEventDetails.materials || '');
+                      setEditExtra(selectedEventDetails.extra || '');
+                      setSelectedEventDetails(null);
+                    }}
+                    className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-100"
+                  >
+                    수정
+                  </button>
+                  <button
+                    onClick={() => handleDeleteEvent(selectedEventDetails.id, selectedEventDetails.writerId)}
+                    className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-100"
+                  >
+                    일정 삭제
+                  </button>
+                </>
               )}
             </div>
           </div>

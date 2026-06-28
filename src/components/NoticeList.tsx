@@ -19,6 +19,12 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
   const [extra, setExtra] = useState('');
   const [writeError, setWriteError] = useState('');
 
+  // 수정 폼 상태
+  const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editExtra, setEditExtra] = useState('');
+
   // 읽음 확인 모달 상태
   const [selectedNoticeForReadCheck, setSelectedNoticeForReadCheck] = useState<Notice | null>(null);
 
@@ -91,6 +97,33 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
       setNotices(updated);
       alert('공지사항이 삭제되었습니다. 🗑️');
     }
+  };
+
+  const handleSaveEditNotice = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingNotice) return;
+
+    if (!editTitle.trim() || !editContent.trim()) {
+      alert('제목과 내용을 입력해 주세요. 📝');
+      return;
+    }
+
+    const updated = notices.map((n) => {
+      if (n.id === editingNotice.id) {
+        return {
+          ...n,
+          title: editTitle.trim(),
+          content: editContent.trim(),
+          extra: editExtra.trim() || undefined,
+        };
+      }
+      return n;
+    });
+
+    storage.saveNotices(updated);
+    setNotices(updated);
+    setEditingNotice(null);
+    alert('공지사항이 성공적으로 수정되었습니다! ✨');
   };
 
   // 보호자가 공지를 볼 때 자동으로 읽음 처리하는 함수
@@ -247,6 +280,72 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
         </form>
       )}
 
+      {/* 공지사항 수정 양식 */}
+      {editingNotice && (
+        <form onSubmit={handleSaveEditNotice} className="bg-white p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-md animate-fadeIn" id="edit-notice-form">
+          <div className="flex items-center justify-between border-b border-amber-50 pb-2">
+            <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
+              📢 공지사항 수정하기
+            </span>
+            <button
+              type="button"
+              onClick={() => setEditingNotice(null)}
+              className="text-gray-400 hover:text-gray-600 text-xs font-bold"
+            >
+              닫기 ✕
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-amber-950 mb-1">공지 제목</label>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full bg-amber-50/10 border border-amber-100 rounded-xl p-2.5 text-xs focus:outline-none focus:border-amber-300 font-bold"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-amber-950 mb-1">상세 공지 내용</label>
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={6}
+              className="w-full bg-amber-50/10 border border-amber-100 rounded-xl p-3 text-xs focus:outline-none focus:border-amber-300 leading-relaxed"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-amber-950 mb-1">기타 참고사항 (선택)</label>
+            <input
+              type="text"
+              value={editExtra}
+              onChange={(e) => setEditExtra(e.target.value)}
+              className="w-full bg-amber-50/10 border border-amber-100 rounded-xl p-2.5 text-xs focus:outline-none focus:border-amber-300"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="flex-1 py-3 bg-emerald-400 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-sm transition-all"
+            >
+              수정 완료 ✨
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingNotice(null)}
+              className="px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-2xl transition-all"
+            >
+              취소
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* 공지사항 피드 */}
       <div className="space-y-4" id="notice-feed-list">
         {notices.map((notice) => {
@@ -303,6 +402,21 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
                     }`}>
                       {notice.readBy.includes(currentUser.id) ? '✓ 읽음' : '● 안 읽음'}
                     </span>
+                  )}
+
+                  {isOwner && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingNotice(notice);
+                        setEditTitle(notice.title);
+                        setEditContent(notice.content);
+                        setEditExtra(notice.extra || '');
+                      }}
+                      className="text-[10px] font-bold text-[#92400E] bg-[#FEF9F2] px-2.5 py-1 rounded-xl border border-[#E9E4DB] hover:bg-[#FEF3C7] transition-all"
+                    >
+                      수정
+                    </button>
                   )}
 
                   {(isOwner || isAdmin) && (

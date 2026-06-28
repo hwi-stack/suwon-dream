@@ -16,6 +16,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
 
   // 필터 상태 (월별 필터: YYYY-MM 형태, 기본값 'all')
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [reportFilter, setReportFilter] = useState<'all' | 'sent' | 'received'>('all');
 
   // 작성 폼 상태
   const [isWriting, setIsWriting] = useState(false);
@@ -78,12 +79,13 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
     return Array.from(monthsSet).sort().reverse();
   };
 
-  // 수신자 목록 구하기 (내가 직원인 경우 보호자 목록, 내가 보호자인 경우 직원/원장 목록)
+  // 수신자 목록 구하기 (내가 직원인 경우 보호자 목록, 내가 보호자인 경우 직원 목록 - 관리자 제외)
+  // 보호자가 알림장 작성할 때 관리자는 제외하고 실제 담당 선생님(staff)만 조회 및 발송하도록 수정합니다.
   const getReceivers = () => {
     if (currentUser.role === 'staff' || currentUser.role === 'admin') {
       return users.filter((u) => u.role === 'parent');
     } else {
-      return users.filter((u) => u.role === 'staff' || u.role === 'admin');
+      return users.filter((u) => u.role === 'staff');
     }
   };
 
@@ -324,6 +326,12 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
       const yyyy = date.getFullYear();
       const mm = String(date.getMonth() + 1).padStart(2, '0');
       return `${yyyy}-${mm}` === selectedMonth;
+    })
+    .filter((rep) => {
+      if (reportFilter === 'all') return true;
+      if (reportFilter === 'sent') return rep.writerId === currentUser.id;
+      if (reportFilter === 'received') return rep.receiverId === currentUser.id;
+      return true;
     });
 
   const moods: { type: MoodType; icon: string; text: string; bg: string; border: string }[] = [
@@ -365,23 +373,62 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
         </div>
 
         {/* 월별 필터 */}
-        <div className="flex items-center gap-2 pt-2 border-t border-[#E9E4DB]/40" id="monthly-filter-container">
-          <span className="text-xs font-bold text-[#5D554D]">📅 월별 필터:</span>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-[#FEF9F2]/60 border border-[#E9E4DB] rounded-xl px-2 py-1.5 text-xs font-bold text-[#4A443F] focus:outline-none focus:border-[#D97706]"
-          >
-            <option value="all">전체 월 보기 📂</option>
-            {getAvailableMonths().map((m) => {
-              const [y, mm] = m.split('-');
-              return (
-                <option key={m} value={m}>
-                  {y}년 {mm}월 알림장 📝
-                </option>
-              );
-            })}
-          </select>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#E9E4DB]/40" id="monthly-filter-container">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#5D554D]">📅 월별 필터:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-[#FEF9F2]/60 border border-[#E9E4DB] rounded-xl px-2 py-1.5 text-xs font-bold text-[#4A443F] focus:outline-none focus:border-[#D97706]"
+            >
+              <option value="all">전체 월 보기 📂</option>
+              {getAvailableMonths().map((m) => {
+                const [y, mm] = m.split('-');
+                return (
+                  <option key={m} value={m}>
+                    {y}년 {mm}월 알림장 📝
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* 알림장 구분 필터 (내가 쓴 / 받은 것) */}
+          <div className="flex items-center gap-1.5" id="report-type-filter-container">
+            <button
+              type="button"
+              onClick={() => setReportFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border ${
+                reportFilter === 'all'
+                  ? 'bg-[#D97706] text-white border-[#D97706]'
+                  : 'bg-[#FAF9F6] text-[#5D554D] border-[#E9E4DB] hover:bg-[#FEF9F2]/40'
+              }`}
+            >
+              전체 📂
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportFilter('sent')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border ${
+                reportFilter === 'sent'
+                  ? 'bg-[#D97706] text-white border-[#D97706]'
+                  : 'bg-[#FAF9F6] text-[#5D554D] border-[#E9E4DB] hover:bg-[#FEF9F2]/40'
+              }`}
+            >
+              내가 작성한 것 ✏️
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportFilter('received')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border ${
+                reportFilter === 'received'
+                  ? 'bg-[#D97706] text-white border-[#D97706]'
+                  : 'bg-[#FAF9F6] text-[#5D554D] border-[#E9E4DB] hover:bg-[#FEF9F2]/40'
+              }`}
+            >
+              받은 알림장 📩
+            </button>
+          </div>
         </div>
       </div>
 

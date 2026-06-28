@@ -20,6 +20,13 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
   const [isCompressing, setIsCompressing] = useState(false);
   const [writeError, setWriteError] = useState('');
 
+  // 수정 폼 상태
+  const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editImages, setEditImages] = useState<string[]>([]);
+  const [isEditCompressing, setIsEditCompressing] = useState(false);
+
   // 라이트박스 뷰어용 상태
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
 
@@ -92,6 +99,62 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
 
   const handleRemoveImage = (index: number) => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleEditImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    setIsEditCompressing(true);
+    const files = Array.from(e.target.files) as File[];
+
+    try {
+      const compressedB64s: string[] = [];
+      for (const file of files) {
+        const compressed = await compressImage(file, 900, 0.7);
+        compressedB64s.push(compressed);
+      }
+      setEditImages((prev) => [...prev, ...compressedB64s]);
+    } catch (err) {
+      console.error(err);
+      alert('이미지를 업로드하는 도중 에러가 발생했습니다.');
+    } finally {
+      setIsEditCompressing(false);
+    }
+  };
+
+  const handleRemoveEditImage = (index: number) => {
+    setEditImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveEditAlbum = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAlbum) return;
+
+    if (!editTitle.trim() || !editDate) {
+      alert('제목과 날짜를 입력해 주세요. 📝');
+      return;
+    }
+
+    if (editImages.length === 0) {
+      alert('최소 한 장 이상의 사진을 지정해 주세요. 📸');
+      return;
+    }
+
+    const updated = albums.map((a) => {
+      if (a.id === editingAlbum.id) {
+        return {
+          ...a,
+          title: editTitle.trim(),
+          date: editDate,
+          images: editImages,
+        };
+      }
+      return a;
+    });
+
+    storage.saveAlbums(updated);
+    setAlbums(updated);
+    setEditingAlbum(null);
+    alert('활동 앨범이 성공적으로 수정되었습니다! 📸✨');
   };
 
   const handleDeleteAlbum = (albumId: string, writerId: string) => {
@@ -299,6 +362,110 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
         </form>
       )}
 
+      {/* 앨범 수정 양식 */}
+      {editingAlbum && (
+        <form onSubmit={handleSaveEditAlbum} className="bg-white p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-md animate-fadeIn" id="edit-album-form">
+          <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
+            <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
+              📸 활동 앨범 수정하기
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAlbum(null);
+                setEditImages([]);
+              }}
+              className="text-[#928B81] hover:text-[#4A443F] text-xs font-bold"
+            >
+              닫기 ✕
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-bold text-[#5D554D] mb-1">행사 날짜</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#5D554D] mb-1">앨범 제목</label>
+              <input
+                type="text"
+                placeholder="예: 텃밭 상추 심기 🌱"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500 font-bold text-[#4A443F]"
+                required
+              />
+            </div>
+          </div>
+
+          {/* 사진 다중 선택 */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-[#5D554D]">
+              🖼️ 활동 사진 수정 (선택 시 추가됨, 압축 지원)
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer bg-[#FFEDD5] hover:bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] rounded-2xl px-4 py-2.5 text-xs font-bold transition-all shadow-sm">
+                {isEditCompressing ? '⏳ 이미지 압축 중...' : '📂 추가 이미지 선택...'}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleEditImageChange}
+                  className="hidden"
+                  disabled={isEditCompressing}
+                />
+              </label>
+              <span className="text-[10px] text-[#928B81]">새 사진을 추가하거나 기존 사진을 삭제/유지할 수 있습니다.</span>
+            </div>
+
+            {/* 현재/선택한 이미지 썸네일 */}
+            {editImages.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 p-2 bg-[#FEF9F2]/50 rounded-2xl border border-[#E9E4DB]/50">
+                {editImages.map((img, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-[#E9E4DB] bg-white">
+                    <img src={img} alt="upload edit" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEditImage(idx)}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px] hover:bg-black font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-2xl shadow-sm transition-all"
+            >
+              수정 완료 ✨
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAlbum(null);
+                setEditImages([]);
+              }}
+              className="px-5 py-3 bg-[#FAF9F6] hover:bg-[#E9E4DB] text-[#5D554D] border border-[#E9E4DB] font-bold text-xs rounded-2xl transition-all"
+            >
+              취소
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* 앨범 그리드 피드 */}
       <div className="space-y-6" id="album-list">
         {albums.map((album, aIdx) => {
@@ -327,18 +494,34 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
                   </h2>
                 </div>
 
-                {(isOwner || isAdmin) && (
-                  <button
-                    onClick={() => handleDeleteAlbum(album.id, album.writerId)}
-                    className={`text-[10px] font-bold px-2 py-1 rounded-xl border ${
-                      isAdmin && !isOwner 
-                        ? 'text-rose-600 bg-rose-50 border-rose-100 font-bold' 
-                        : 'text-[#928B81] bg-[#FAF9F6] border-[#E9E4DB]'
-                    }`}
-                  >
-                    {isAdmin && !isOwner ? '👑 강제 삭제' : '삭제'}
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {isOwner && (
+                    <button
+                      onClick={() => {
+                        setEditingAlbum(album);
+                        setEditTitle(album.title);
+                        setEditDate(album.date);
+                        setEditImages(album.images || []);
+                      }}
+                      className="text-[10px] font-bold text-[#92400E] bg-[#FEF9F2] px-2.5 py-1 rounded-xl border border-[#E9E4DB] hover:bg-[#FEF3C7] transition-all"
+                    >
+                      수정
+                    </button>
+                  )}
+
+                  {(isOwner || isAdmin) && (
+                    <button
+                      onClick={() => handleDeleteAlbum(album.id, album.writerId)}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-xl border ${
+                        isAdmin && !isOwner 
+                          ? 'text-rose-600 bg-rose-50 border-rose-100 font-bold' 
+                          : 'text-[#928B81] bg-[#FAF9F6] border-[#E9E4DB]'
+                      }`}
+                    >
+                      {isAdmin && !isOwner ? '👑 강제 삭제' : '삭제'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* 사진 그리드 내역 */}
