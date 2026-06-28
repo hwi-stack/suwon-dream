@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { storage } from '../utils/storage';
 
@@ -18,7 +18,15 @@ export default function LoginSelection({ onLoginSuccess }: LoginSelectionProps) 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwdError, setPwdError] = useState('');
 
-  const users = storage.getUsers();
+  const [users, setUsers] = useState<User[]>(() => storage.getUsers());
+
+  useEffect(() => {
+    setUsers(storage.getUsers());
+    const unsub = storage.subscribe<User>('users', (newUsers) => {
+      setUsers(newUsers);
+    });
+    return unsub;
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

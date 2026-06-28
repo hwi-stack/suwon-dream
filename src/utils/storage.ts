@@ -12,7 +12,8 @@ import {
   doc, 
   setDoc, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -259,8 +260,9 @@ const KEYS = {
 function getStored<T>(key: string, initialData: T[]): T[] {
   const data = localStorage.getItem(key);
   if (!data) {
-    localStorage.setItem(key, JSON.stringify(initialData));
-    return initialData;
+    // 최초 구동 시 실시간 데이터가 도착하기 전 가상 더미 데이터가 로컬 스토리지에 미리 설정되어
+    // 역으로 Firestore에 동기화되는 레이스 컨디션(동기화 꼬임) 방지를 위해 빈 배열을 반환합니다.
+    return [];
   }
   return JSON.parse(data);
 }
@@ -268,7 +270,7 @@ function getStored<T>(key: string, initialData: T[]): T[] {
 // 실시간 구독 목록 저장소
 const subscribers: { [key: string]: ((data: any) => void)[] } = {};
 
-// Firestore 일괄 비교 업데이트/삭제 동기화 엔진
+// Firestore 일괄 비교 업데이트/삭제 동기화 엔진 (writeBatch 원자적 트랜잭션 적용)
 async function syncToFirestore<T extends { id: string }>(collName: string, newList: T[]) {
   const localKey = `ggum_${collName}`;
   const oldListStr = localStorage.getItem(localKey);
@@ -278,28 +280,35 @@ async function syncToFirestore<T extends { id: string }>(collName: string, newLi
   localStorage.setItem(localKey, JSON.stringify(newList));
   notifySubscribers(collName, newList);
 
-  // 추가/수정된 항목 감지 및 업로드
-  for (const item of newList) {
-    const oldItem = oldList.find(o => o.id === item.id);
-    if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
-      try {
-        await setDoc(doc(db, collName, item.id), item);
-      } catch (err) {
-        console.error(`Error saving doc ${item.id} in ${collName}:`, err);
-      }
-    }
-  }
+  try {
+    const batch = writeBatch(db);
+    let hasChanges = false;
 
-  // 삭제된 항목 감지 및 삭제
-  const newIds = new Set(newList.map(item => item.id));
-  for (const oldItem of oldList) {
-    if (!newIds.has(oldItem.id)) {
-      try {
-        await deleteDoc(doc(db, collName, oldItem.id));
-      } catch (err) {
-        console.error(`Error deleting doc ${oldItem.id} in ${collName}:`, err);
+    // 추가/수정된 항목 감지 및 배치 등록
+    for (const item of newList) {
+      const oldItem = oldList.find(o => o.id === item.id);
+      if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
+        const docRef = doc(db, collName, item.id);
+        batch.set(docRef, item);
+        hasChanges = true;
       }
     }
+
+    // 삭제된 항목 감지 및 배치 삭제 등록
+    const newIds = new Set(newList.map(item => item.id));
+    for (const oldItem of oldList) {
+      if (!newIds.has(oldItem.id)) {
+        const docRef = doc(db, collName, oldItem.id);
+        batch.delete(docRef);
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      await batch.commit();
+    }
+  } catch (err) {
+    console.error(`Error in atomic sync to Firestore for ${collName}:`, err);
   }
 }
 
@@ -331,14 +340,21 @@ function initRealtimeSync() {
   collectionsToSync.forEach(({ key, collName, initial }) => {
     onSnapshot(collection(db, collName), (snapshot) => {
       if (snapshot.empty) {
-        // 만약 최초 로드되어 파이어스토어 컬렉션이 완전히 비어있다면 초기 더미 데이터 주입(Seeding)
-        initial.forEach(async (item) => {
-          try {
-            await setDoc(doc(db, collName, item.id), item);
-          } catch (err) {
-            console.error(`Seeding error for ${collName}:`, err);
-          }
-        });
+        // 데이터가 비었을 때 더미 데이터를 강제로 재생성하는 Seeding 기능을 완전히 제거합니다.
+        // 이용자가 직접 만든 계정이나 작성 글을 전부 삭제하더라도 가상의 옛 데이터가 다시 생기지 않도록 차단합니다.
+        // 단, users 컬렉션이 완전히 빈 상태라면 관리자 한 명만은 진입을 위해 최소한 자동 생성해 줍니다.
+        if (key === 'users') {
+          const adminUser: User = {
+            id: '관리자',
+            name: '관리자',
+            role: 'admin',
+            initialPassword: '0926',
+            currentPassword: '0926',
+            isPasswordChanged: false,
+            createdAt: '2026-06-01T00:00:00Z',
+          };
+          setDoc(doc(db, 'users', '관리자'), adminUser).catch(e => console.error(e));
+        }
       } else {
         let data: any[] = [];
         snapshot.forEach((doc) => {
