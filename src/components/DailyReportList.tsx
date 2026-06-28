@@ -435,7 +435,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
       {/* 새 알림장 쓰기 양식 (모달로 시각적 완벽 격리) */}
       {isWriting && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <form onSubmit={handleCreateReport} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="write-report-form">
+          <form onSubmit={handleCreateReport} className="bg-white w-full max-w-lg px-5 pt-5 pb-12 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-xl animate-scaleUp max-h-[85vh] overflow-y-auto text-left" id="write-report-form">
           <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
             <span className="font-bold text-[#4A443F] text-sm flex items-center gap-1.5">
               💌 사랑이 담긴 알림장 쓰기
@@ -476,7 +476,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
           {(currentUser.role === 'staff' || currentUser.role === 'parent') && (
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#5D554D]">
-                ⭐ 오늘의 기분 및 상태 리포트 (보호자 전달용)
+                ⭐ 오늘의 기분 및 상태 리포트
               </label>
               <div className="grid grid-cols-5 gap-1" id="mood-selector">
                 {moods.map((m) => {
@@ -597,7 +597,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
       {/* 알림장 수정 양식 (모달로 시각적 완벽 격리) */}
       {editingReport && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <form onSubmit={handleSaveEdit} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="edit-report-form">
+          <form onSubmit={handleSaveEdit} className="bg-white w-full max-w-lg px-5 pt-5 pb-12 rounded-3xl border-2 border-[#E9E4DB] space-y-4 shadow-xl animate-scaleUp max-h-[85vh] overflow-y-auto text-left" id="edit-report-form">
             <div className="flex items-center justify-between border-b border-[#E9E4DB]/40 pb-2">
               <span className="font-serif font-bold text-[#D97706] text-sm">
                 ✏️ 알림장 수정하기

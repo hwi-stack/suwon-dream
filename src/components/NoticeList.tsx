@@ -210,7 +210,7 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
       {/* 새 공지사항 작성 양식 (모달로 시각적 완벽 격리) */}
       {isWriting && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <form onSubmit={handleCreateNotice} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="write-notice-form">
+          <form onSubmit={handleCreateNotice} className="bg-white w-full max-w-lg px-5 pt-5 pb-12 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-xl animate-scaleUp max-h-[85vh] overflow-y-auto text-left" id="write-notice-form">
           <div className="flex items-center justify-between border-b border-amber-50 pb-2">
             <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
               📢 새 공지사항 작성하기
@@ -285,7 +285,7 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
       {/* 공지사항 수정 양식 (모달로 시각적 완벽 격리) */}
       {editingNotice && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <form onSubmit={handleSaveEditNotice} className="bg-white w-full max-w-lg p-5 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-xl animate-scaleUp max-h-[90vh] overflow-y-auto text-left" id="edit-notice-form">
+          <form onSubmit={handleSaveEditNotice} className="bg-white w-full max-w-lg px-5 pt-5 pb-12 rounded-3xl border-2 border-emerald-100 space-y-4 shadow-xl animate-scaleUp max-h-[85vh] overflow-y-auto text-left" id="edit-notice-form">
           <div className="flex items-center justify-between border-b border-amber-50 pb-2">
             <span className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
               📢 공지사항 수정하기

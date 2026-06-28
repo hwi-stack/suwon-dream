@@ -52,7 +52,7 @@ export default function HomeView({
   // 환영 멘트 생성기
   const getGreeting = () => {
     if (currentUser.role === 'admin') {
-      return '👑 오늘 하루도 복지관을 따뜻하게 가꾸어주셔서 감사합니다, 원장님!';
+      return '👑 오늘 하루도 복지관을 따뜻하게 가꾸어주셔서 감사합니다!';
     } else if (currentUser.role === 'staff') {
       return `👩‍🏫 ${currentUser.name} 선생님, 오늘도 힘내세요! 회원들의 소중한 꿈을 잇는 하루가 되기를 기원합니다.`;
     } else {
@@ -216,7 +216,7 @@ export default function HomeView({
       <div className="p-3.5 bg-[#FEF9F2] rounded-2xl border border-[#E9E4DB] text-center">
         <span className="text-[10px] font-bold text-[#92400E] leading-normal">
           🌸 수원시장애인종합복지관 주간이용시설 '꿈이음' <br />
-          <span className="font-medium text-[#928B81] opacity-90">이용 문의: 031-207-1526</span>
+          <span className="font-medium text-[#928B81] opacity-90">이용 문의: 031-548-5606</span>
         </span>
       </div>
 
