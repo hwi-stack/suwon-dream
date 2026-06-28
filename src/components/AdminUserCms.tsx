@@ -20,6 +20,13 @@ export default function AdminUserCms() {
 
   useEffect(() => {
     setUsers(storage.getUsers());
+    
+    // 실시간 구독 활성화
+    const unsub = storage.subscribe<User>('users', (newUsers) => {
+      setUsers(newUsers);
+    });
+    
+    return unsub;
   }, []);
 
   const handleAddUser = (e: React.FormEvent) => {

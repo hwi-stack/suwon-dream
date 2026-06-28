@@ -25,6 +25,13 @@ export default function AlbumGrid({ currentUser, fontSizeClass }: AlbumGridProps
 
   useEffect(() => {
     setAlbums(storage.getAlbums());
+
+    // 실시간 구독 활성화
+    const unsub = storage.subscribe<Album>('albums', (newAlbums) => {
+      setAlbums(newAlbums);
+    });
+
+    return unsub;
   }, []);
 
   const handleCreateAlbum = (e: React.FormEvent) => {

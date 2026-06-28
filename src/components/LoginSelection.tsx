@@ -176,7 +176,7 @@ export default function LoginSelection({ onLoginSuccess }: LoginSelectionProps) 
                   type="button"
                   onClick={() => {
                     setSelectedRole('admin');
-                    setUserId('이예진'); // 기본 원장님 성함 프리셋
+                    setUserId('');
                   }}
                   className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
                     selectedRole === 'admin'
@@ -230,13 +230,13 @@ export default function LoginSelection({ onLoginSuccess }: LoginSelectionProps) 
               <div className="space-y-3 animate-fadeIn">
                 <div>
                   <label className="block text-xs font-bold text-amber-900 mb-1">
-                    {selectedRole === 'admin' ? '관리자 성함 (또는 admin)' : '사용자 성함 (실명)'}
+                    {selectedRole === 'admin' ? '관리자 이름 (또는 admin)' : '사용자 성함 (실명)'}
                   </label>
                   <input
                     type="text"
                     placeholder={
                       selectedRole === 'admin' 
-                        ? '예: 이예진 또는 admin' 
+                        ? '예: 관리자 또는 admin' 
                         : selectedRole === 'staff'
                         ? '예: 박지현 (성함 입력)'
                         : '예: 김하은 (성함 입력)'
@@ -281,16 +281,6 @@ export default function LoginSelection({ onLoginSuccess }: LoginSelectionProps) 
             )}
           </form>
         )}
-
-        {/* 퀵 데모 테스트 가이드 제공 */}
-        <div className="mt-8 pt-4 border-t border-dashed border-amber-100">
-          <span className="block text-xs font-bold text-amber-800 mb-2">💡 빠른 데모 로그인 정보 (체험용):</span>
-          <div className="grid grid-cols-1 gap-1.5 text-[11px] text-amber-900 bg-amber-50/60 p-3 rounded-2xl border border-amber-100/50">
-            <div>• <span className="font-bold">👑 관리자:</span> <code className="bg-white px-1 py-0.5 rounded border border-amber-100">이예진</code> (또는 <code className="bg-white px-1 py-0.5 rounded border border-amber-100">admin</code>) / <span className="font-bold">비번:</span> <code className="bg-white px-1 py-0.5 rounded border border-amber-100">0926</code></div>
-            <div>• <span className="font-bold">👩‍🏫 직원:</span> <code className="bg-white px-1 py-0.5 rounded border border-amber-100">박지현</code> / <span className="font-bold">비번:</span> <code className="bg-white px-1 py-0.5 rounded border border-amber-100">1234</code></div>
-            <div>• <span className="font-bold">👪 보호자:</span> <code className="bg-white px-1 py-0.5 rounded border border-amber-100">김하은</code> / <span className="font-bold">비번:</span> <code className="bg-white px-1 py-0.5 rounded border border-amber-100">1234</code></div>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -7,12 +7,20 @@ import {
   Comment, 
   MedicationRequest 
 } from '../types';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot 
+} from 'firebase/firestore';
+import { db } from './firebase';
 
 // 초기 더미 사용자 목록
 const INITIAL_USERS: User[] = [
   {
-    id: '이예진',
-    name: '이예진',
+    id: '관리자',
+    name: '관리자',
     role: 'admin',
     initialPassword: '0926',
     currentPassword: '0926',
@@ -59,7 +67,7 @@ const INITIAL_USERS: User[] = [
   },
 ];
 
-// 초기 더미 알림장 목록
+// 초기 알림장 목록
 const INITIAL_DAILY_REPORTS: DailyReport[] = [
   {
     id: 'report-1',
@@ -71,7 +79,7 @@ const INITIAL_DAILY_REPORTS: DailyReport[] = [
     receiverId: '김하은',
     receiverName: '김하은 (이지우 보호자)',
     mood: '😆 매우 밝음',
-    images: [], // 비어있는 경우 기본 이미지나 텍스트 위주
+    images: [],
     likes: ['김하은'],
     createdAt: '2026-06-25T17:00:00-07:00',
   },
@@ -87,7 +95,7 @@ const INITIAL_DAILY_REPORTS: DailyReport[] = [
     mood: '🙂 평온함',
     images: [],
     likes: [],
-    createdAt: '2026-06-26T16:30:00-07:00',
+    createdAt: '2026-06-26T17:30:00-07:00',
   },
   {
     id: 'report-parent-1',
@@ -98,7 +106,6 @@ const INITIAL_DAILY_REPORTS: DailyReport[] = [
     writerRole: 'parent',
     receiverId: '박지현',
     receiverName: '박지현',
-    // 보호자가 작성하는 알림장은 mood(기분 리포트)가 제공되지 않음
     images: [],
     likes: ['박지현'],
     createdAt: '2026-06-27T08:30:00-07:00',
@@ -121,8 +128,8 @@ const INITIAL_NOTICES: Notice[] = [
     id: 'notice-2',
     title: '📢 하계 무더위 대비 냉방 및 건강 관리 안내',
     content: '연일 기온이 높아지고 있습니다. 복지관에서는 이용자분들의 쾌적한 하루를 위해 실내 온도를 항시 24~26도로 세심히 조절하고 있습니다. 또한 수분 섭취를 돕기 위해 보리차를 주기적으로 제공하고 있으니 가정에서도 얇고 바람이 잘 통하는 여벌옷을 가방에 챙겨 보내주시면 환복 등에 큰 도움이 되겠습니다. 늘 건강하고 시원한 하루가 되도록 노력하겠습니다. 🌻',
-    writerId: '이예진',
-    writerName: '이예진',
+    writerId: '관리자',
+    writerName: '관리자',
     readBy: ['박지현', '최준우', '김하은', '박성철'],
     createdAt: '2026-06-26T11:00:00-07:00',
   },
@@ -132,8 +139,8 @@ const INITIAL_NOTICES: Notice[] = [
 const INITIAL_EVENTS: CalendarEvent[] = [
   {
     id: 'event-1',
-    title: '🎨 아로마 캔들 만들기 체험',
-    content: '전문 강사님과 함께 천연 아로마 향을 첨가한 드라이플라워 캔들을 만드는 심리 안정 오감 수업입니다.',
+    title: '🎨 아로마 석고 방향제 만들기',
+    content: '전문 강사님을 초빙하여 은은한 허브 아로마 오일을 사용해 나만의 예쁜 석고 방향제를 만들어 보는 시간을 가집니다.',
     date: '2026-06-15',
     materials: '활동하기 편한 앞치마',
     extra: '복지관에서 재료비 전액을 지원합니다.',
@@ -143,7 +150,7 @@ const INITIAL_EVENTS: CalendarEvent[] = [
   },
   {
     id: 'event-2',
-    title: '🍿 꿈이음 주말 영화 관람',
+    title: '🎬 영화 관람 및 휴식 활동',
     content: '복지관 시청각실에서 편안하고 조용한 분위기 속에 힐링 배리어프리 영화를 상영합니다.',
     date: '2026-06-20',
     materials: '개인 물컵',
@@ -153,9 +160,9 @@ const INITIAL_EVENTS: CalendarEvent[] = [
   },
   {
     id: 'event-3',
-    title: '🌳 광교호수공원 치유 산책',
-    content: '가까운 광교호수공원으로 나가 숲속 향기와 따뜻한 맑은 햇살을 만끽하며 힐링 산책 프로그램을 진행합니다.',
-    date: '2026-06-29', // 현재 시간 6월 27일 근처
+    title: '🌳 광교 역사공원 인근 숲속 산책 활동',
+    content: '초록빛 싱그러운 대자연 속에서 가볍게 숲길을 걸으며 오감 피톤치드를 온몸으로 만끽하는 야외 신체 힐링 활동입니다.',
+    date: '2026-06-29',
     materials: '편안한 운동화, 모자, 개인 물병',
     extra: '비가 올 시 복지관 실내 체육 프로그램으로 대체됩니다.',
     writerId: '박지현',
@@ -164,7 +171,7 @@ const INITIAL_EVENTS: CalendarEvent[] = [
   },
   {
     id: 'event-4',
-    title: '🎂 6월 생일 축하 잔치 🎉',
+    title: '🎂 6월 꿈이음 생일 잔치 🎉',
     content: '꿈이음의 6월 생일자분들을 위해 다 함께 맛있는 케이크를 나누고 축하 노래를 부르는 소중한 시간입니다.',
     date: '2026-06-30',
     materials: '행복하고 따뜻한 미소 😊',
@@ -174,13 +181,13 @@ const INITIAL_EVENTS: CalendarEvent[] = [
   }
 ];
 
-// 초기 앨범 목록 (Base64 플레이스홀더를 사용한 따뜻한 가상 이미지 데이터 또는 SVG 생성)
+// 초기 사진첩 목록
 const INITIAL_ALBUMS: Album[] = [
   {
     id: 'album-1',
     title: '📸 봄날 텃밭 상추 모종 심기 체험',
     date: '2026-06-12',
-    images: [], // 코드 단에서 이쁘고 따뜻한 일러스트 카드로 대체 렌더링되게 구현
+    images: [],
     writerId: '박지현',
     writerName: '박지현',
     createdAt: '2026-06-12T16:00:00-07:00',
@@ -248,7 +255,7 @@ const KEYS = {
   MEDICATIONS: 'ggum_medications',
 };
 
-// 헬퍼: LocalStorage 초기화 및 불러오기
+// 헬퍼: LocalStorage 불러오기
 function getStored<T>(key: string, initialData: T[]): T[] {
   const data = localStorage.getItem(key);
   if (!data) {
@@ -258,35 +265,205 @@ function getStored<T>(key: string, initialData: T[]): T[] {
   return JSON.parse(data);
 }
 
-function setStored<T>(key: string, data: T[]): void {
-  localStorage.setItem(key, JSON.stringify(data));
+// 실시간 구독 목록 저장소
+const subscribers: { [key: string]: ((data: any) => void)[] } = {};
+
+// Firestore 일괄 비교 업데이트/삭제 동기화 엔진
+async function syncToFirestore<T extends { id: string }>(collName: string, newList: T[]) {
+  const localKey = `ggum_${collName}`;
+  const oldListStr = localStorage.getItem(localKey);
+  const oldList: T[] = oldListStr ? JSON.parse(oldListStr) : [];
+
+  // 즉각적인 피드백을 위해 로컬스토리지 우선 업데이트
+  localStorage.setItem(localKey, JSON.stringify(newList));
+  notifySubscribers(collName, newList);
+
+  // 추가/수정된 항목 감지 및 업로드
+  for (const item of newList) {
+    const oldItem = oldList.find(o => o.id === item.id);
+    if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
+      try {
+        await setDoc(doc(db, collName, item.id), item);
+      } catch (err) {
+        console.error(`Error saving doc ${item.id} in ${collName}:`, err);
+      }
+    }
+  }
+
+  // 삭제된 항목 감지 및 삭제
+  const newIds = new Set(newList.map(item => item.id));
+  for (const oldItem of oldList) {
+    if (!newIds.has(oldItem.id)) {
+      try {
+        await deleteDoc(doc(db, collName, oldItem.id));
+      } catch (err) {
+        console.error(`Error deleting doc ${oldItem.id} in ${collName}:`, err);
+      }
+    }
+  }
 }
+
+// 구독자에게 데이터 알림 발송
+function notifySubscribers(key: string, data: any) {
+  if (subscribers[key]) {
+    subscribers[key].forEach(cb => {
+      try {
+        cb(data);
+      } catch (e) {
+        console.error('Error notifying subscriber:', e);
+      }
+    });
+  }
+}
+
+// 실시간 동기화 리스너 작동 (앱 초기 구동 시점부터 즉각 Firestore와 동기화)
+function initRealtimeSync() {
+  const collectionsToSync = [
+    { key: 'users', collName: 'users', initial: INITIAL_USERS },
+    { key: 'daily_reports', collName: 'daily_reports', initial: INITIAL_DAILY_REPORTS },
+    { key: 'notices', collName: 'notices', initial: INITIAL_NOTICES },
+    { key: 'events', collName: 'events', initial: INITIAL_EVENTS },
+    { key: 'albums', collName: 'albums', initial: INITIAL_ALBUMS },
+    { key: 'comments', collName: 'comments', initial: INITIAL_COMMENTS },
+    { key: 'medications', collName: 'medications', initial: INITIAL_MEDICATIONS }
+  ];
+
+  collectionsToSync.forEach(({ key, collName, initial }) => {
+    onSnapshot(collection(db, collName), (snapshot) => {
+      if (snapshot.empty) {
+        // 만약 최초 로드되어 파이어스토어 컬렉션이 완전히 비어있다면 초기 더미 데이터 주입(Seeding)
+        initial.forEach(async (item) => {
+          try {
+            await setDoc(doc(db, collName, item.id), item);
+          } catch (err) {
+            console.error(`Seeding error for ${collName}:`, err);
+          }
+        });
+      } else {
+        let data: any[] = [];
+        snapshot.forEach((doc) => {
+          data.push(doc.data());
+        });
+
+        // "이예진" 유저 정보가 존재할 시, 실시간으로 "관리자"로 마이그레이션 처리하여 호환 유지
+        if (key === 'users') {
+          const hasYejin = data.some(u => u.id === '이예진');
+          const hasAdmin = data.some(u => u.id === '관리자');
+          if (hasYejin) {
+            deleteDoc(doc(db, 'users', '이예진')).catch(e => console.error(e));
+            if (!hasAdmin) {
+              const yejinUser = data.find(u => u.id === '이예진');
+              const adminUser = {
+                id: '관리자',
+                name: '관리자',
+                role: 'admin',
+                initialPassword: yejinUser?.initialPassword || '0926',
+                currentPassword: yejinUser?.currentPassword || '0926',
+                isPasswordChanged: yejinUser?.isPasswordChanged || false,
+                createdAt: yejinUser?.createdAt || '2026-06-01T00:00:00Z',
+              };
+              setDoc(doc(db, 'users', '관리자'), adminUser).catch(e => console.error(e));
+            }
+            data = data.filter(u => u.id !== '이예진');
+            if (!hasAdmin) {
+              data.push({
+                id: '관리자',
+                name: '관리자',
+                role: 'admin',
+                initialPassword: '0926',
+                currentPassword: '0926',
+                isPasswordChanged: false,
+                createdAt: '2026-06-01T00:00:00Z',
+              });
+            }
+          }
+        }
+
+        // 각 컬렉션 내의 작성자/ID 매핑 일관성 필터링
+        data = data.map(item => {
+          if (item.writerId === '이예진') {
+            item.writerId = '관리자';
+            item.writerName = '관리자';
+          }
+          if (item.id === '이예진') {
+            item.id = '관리자';
+            item.name = '관리자';
+          }
+          return item;
+        });
+        
+        // 데이터 정렬 규칙 적용
+        if (key === 'daily_reports' || key === 'notices' || key === 'comments' || key === 'medications') {
+          data.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        } else if (key === 'events') {
+          data.sort((a, b) => a.date.localeCompare(b.date));
+        } else if (key === 'albums') {
+          data.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        }
+        
+        // 최신본 로컬 캐싱 및 컴포넌트 알림
+        localStorage.setItem(`ggum_${key}`, JSON.stringify(data));
+        notifySubscribers(key, data);
+      }
+    }, (error) => {
+      console.error(`Error in realtime sync for ${collName}:`, error);
+    });
+  });
+}
+
+// 리스너 가동
+initRealtimeSync();
 
 // 데이터 입출력 인터페이스 객체
 export const storage = {
   getUsers: (): User[] => getStored<User>(KEYS.USERS, INITIAL_USERS),
-  saveUsers: (users: User[]): void => setStored<User>(KEYS.USERS, users),
+  saveUsers: (users: User[]): void => {
+    syncToFirestore<User>('users', users);
+  },
 
   getDailyReports: (): DailyReport[] => getStored<DailyReport>(KEYS.DAILY_REPORTS, INITIAL_DAILY_REPORTS),
-  saveDailyReports: (reports: DailyReport[]): void => setStored<DailyReport>(KEYS.DAILY_REPORTS, reports),
+  saveDailyReports: (reports: DailyReport[]): void => {
+    syncToFirestore<DailyReport>('daily_reports', reports);
+  },
 
   getNotices: (): Notice[] => getStored<Notice>(KEYS.NOTICES, INITIAL_NOTICES),
-  saveNotices: (notices: Notice[]): void => setStored<Notice>(KEYS.NOTICES, notices),
+  saveNotices: (notices: Notice[]): void => {
+    syncToFirestore<Notice>('notices', notices);
+  },
 
   getEvents: (): CalendarEvent[] => getStored<CalendarEvent>(KEYS.EVENTS, INITIAL_EVENTS),
-  saveEvents: (events: CalendarEvent[]): void => setStored<CalendarEvent>(KEYS.EVENTS, events),
+  saveEvents: (events: CalendarEvent[]): void => {
+    syncToFirestore<CalendarEvent>('events', events);
+  },
 
   getAlbums: (): Album[] => getStored<Album>(KEYS.ALBUMS, INITIAL_ALBUMS),
-  saveAlbums: (albums: Album[]): void => setStored<Album>(KEYS.ALBUMS, albums),
+  saveAlbums: (albums: Album[]): void => {
+    syncToFirestore<Album>('albums', albums);
+  },
 
   getComments: (): Comment[] => getStored<Comment>(KEYS.COMMENTS, INITIAL_COMMENTS),
-  saveComments: (comments: Comment[]): void => setStored<Comment>(KEYS.COMMENTS, comments),
+  saveComments: (comments: Comment[]): void => {
+    syncToFirestore<Comment>('comments', comments);
+  },
 
   getMedications: (): MedicationRequest[] => getStored<MedicationRequest>(KEYS.MEDICATIONS, INITIAL_MEDICATIONS),
-  saveMedications: (medications: MedicationRequest[]): void => setStored<MedicationRequest>(KEYS.MEDICATIONS, medications),
+  saveMedications: (medications: MedicationRequest[]): void => {
+    syncToFirestore<MedicationRequest>('medications', medications);
+  },
+
+  // 컴포넌트 단위에서 데이터 변경을 실시간 리스닝하기 위한 구독 API 추가
+  subscribe: <T>(key: string, callback: (data: T[]) => void) => {
+    if (!subscribers[key]) {
+      subscribers[key] = [];
+    }
+    subscribers[key].push(callback);
+    return () => {
+      subscribers[key] = subscribers[key].filter(cb => cb !== callback);
+    };
+  },
 
   // 초기화 함수 (테스트용)
-  resetAll: (): void => {
+  resetAll: async (): Promise<void> => {
     localStorage.removeItem(KEYS.USERS);
     localStorage.removeItem(KEYS.DAILY_REPORTS);
     localStorage.removeItem(KEYS.NOTICES);
@@ -294,6 +471,9 @@ export const storage = {
     localStorage.removeItem(KEYS.ALBUMS);
     localStorage.removeItem(KEYS.COMMENTS);
     localStorage.removeItem(KEYS.MEDICATIONS);
+    
+    // Firestore 컬렉션 일괄 비우기 등은 필요에 따라 처리 가능하나, 
+    // 여기서는 기본 클라이언트 캐시 삭제 및 새로고침만 실행
     window.location.reload();
   }
 };

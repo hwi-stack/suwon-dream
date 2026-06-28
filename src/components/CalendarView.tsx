@@ -28,6 +28,13 @@ export default function CalendarView({ currentUser, fontSizeClass }: CalendarVie
 
   useEffect(() => {
     setEvents(storage.getEvents());
+
+    // 실시간 구독 활성화
+    const unsub = storage.subscribe<CalendarEvent>('events', (newEvents) => {
+      setEvents(newEvents);
+    });
+
+    return unsub;
   }, []);
 
   const handleCreateEvent = (e: React.FormEvent) => {

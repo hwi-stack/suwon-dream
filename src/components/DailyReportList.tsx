@@ -40,6 +40,23 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
     setReports(storage.getDailyReports());
     setComments(storage.getComments());
     setUsers(storage.getUsers());
+
+    // 실시간 구독 활성화 (Firebase 실시간 연동)
+    const unsubReports = storage.subscribe<DailyReport>('daily_reports', (newReports) => {
+      setReports(newReports);
+    });
+    const unsubComments = storage.subscribe<Comment>('comments', (newComments) => {
+      setComments(newComments);
+    });
+    const unsubUsers = storage.subscribe<User>('users', (newUsers) => {
+      setUsers(newUsers);
+    });
+
+    return () => {
+      unsubReports();
+      unsubComments();
+      unsubUsers();
+    };
   }, []);
 
   const refreshData = () => {

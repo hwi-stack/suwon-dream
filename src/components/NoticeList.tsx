@@ -25,6 +25,19 @@ export default function NoticeList({ currentUser, fontSizeClass }: NoticeListPro
   useEffect(() => {
     setNotices(storage.getNotices());
     setUsers(storage.getUsers());
+
+    // 실시간 구독 활성화
+    const unsubNotices = storage.subscribe<Notice>('notices', (newNotices) => {
+      setNotices(newNotices);
+    });
+    const unsubUsers = storage.subscribe<User>('users', (newUsers) => {
+      setUsers(newUsers);
+    });
+
+    return () => {
+      unsubNotices();
+      unsubUsers();
+    };
   }, []);
 
   const handleCreateNotice = (e: React.FormEvent) => {

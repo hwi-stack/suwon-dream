@@ -23,17 +23,30 @@ export default function HomeView({
 
   useEffect(() => {
     // 가장 최근 공지사항 가져오기
-    const notices = storage.getNotices();
-    if (notices.length > 0) {
-      setRecentNotice(notices[0]);
-    }
+    const updateNotices = (notices: Notice[]) => {
+      if (notices.length > 0) {
+        setRecentNotice(notices[0]);
+      } else {
+        setRecentNotice(null);
+      }
+    };
+    updateNotices(storage.getNotices());
 
     // 다가오는 일정 가져오기
-    const events = storage.getEvents();
-    const sorted = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    // 단순 데모를 위해 예정된 일정을 최대 2개까지 보여줌
-    setWeeklyEvents(sorted.slice(0, 2));
+    const updateEvents = (events: CalendarEvent[]) => {
+      const sorted = [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setWeeklyEvents(sorted.slice(0, 2));
+    };
+    updateEvents(storage.getEvents());
+
+    // 실시간 구독 활성화
+    const unsubNotices = storage.subscribe<Notice>('notices', updateNotices);
+    const unsubEvents = storage.subscribe<CalendarEvent>('events', updateEvents);
+
+    return () => {
+      unsubNotices();
+      unsubEvents();
+    };
   }, []);
 
   // 환영 멘트 생성기
@@ -168,6 +181,21 @@ export default function HomeView({
 
       {/* 하단 유틸리티 기능: 비밀번호 변경 & 로그아웃 */}
       <div className="bg-white p-4 rounded-3xl border border-[#E9E4DB] shadow-sm space-y-3">
+        <div className="flex items-center justify-between px-1 pb-2 border-b border-[#FAF9F6]">
+          <span className="text-xs text-[#928B81] font-medium">로그인 계정</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg border ${
+              currentUser.role === 'admin' 
+                ? 'bg-amber-100 text-amber-800 border-amber-200' 
+                : currentUser.role === 'staff' 
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                : 'bg-pink-100 text-pink-800 border-pink-200'
+            }`}>
+              {currentUser.role === 'admin' ? '관리자' : currentUser.role === 'staff' ? '직원' : '보호자'}
+            </span>
+            <span className="text-xs font-bold text-[#4A443F]">{currentUser.name}님</span>
+          </div>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setIsChangingPassword(true)}
