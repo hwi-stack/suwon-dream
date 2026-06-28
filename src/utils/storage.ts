@@ -289,7 +289,10 @@ async function syncToFirestore<T extends { id: string }>(collName: string, newLi
       const oldItem = oldList.find(o => o.id === item.id);
       if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
         const docRef = doc(db, collName, item.id);
-        batch.set(docRef, item);
+        // JSON 직렬화/역직렬화를 통해 객체 내의 undefined 필드(예: staff 추가 시의 patientName)를 완전히 제거하여
+        // Firestore SDK의 "Unsupported field value: undefined" 에러 발생 및 전체 트랜잭션 롤백을 미연에 방지합니다.
+        const sanitizedItem = JSON.parse(JSON.stringify(item));
+        batch.set(docRef, sanitizedItem);
         hasChanges = true;
       }
     }
