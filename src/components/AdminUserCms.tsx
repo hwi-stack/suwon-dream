@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { storage } from '../utils/storage';
 
+export const CLASS_OPTIONS = [
+  '팀장',
+  '자립지원반',
+  '문화예술반',
+  '스포츠반',
+  '개인별지원반',
+  '맞춤형지원반'
+];
+
 export default function AdminUserCms() {
   const [users, setUsers] = useState<User[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -11,12 +20,14 @@ export default function AdminUserCms() {
   const [newRole, setNewRole] = useState<UserRole>('staff');
   const [newPassword, setNewPassword] = useState('1234');
   const [newPatientName, setNewPatientName] = useState('');
+  const [newClassGroup, setNewClassGroup] = useState('자립지원반');
   const [error, setError] = useState('');
 
   // Editing state
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editPatientName, setEditPatientName] = useState('');
+  const [editClassGroup, setEditClassGroup] = useState('자립지원반');
 
   useEffect(() => {
     setUsers(storage.getUsers());
@@ -55,6 +66,7 @@ export default function AdminUserCms() {
       isPasswordChanged: false,
       createdAt: new Date().toISOString(),
       patientName: newRole === 'parent' ? newPatientName.trim() : undefined,
+      classGroup: newRole !== 'admin' ? newClassGroup : undefined,
     };
 
     const updated = [...users, newUser];
@@ -66,6 +78,7 @@ export default function AdminUserCms() {
     setNewRole('staff');
     setNewPassword('1234');
     setNewPatientName('');
+    setNewClassGroup('자립지원반');
     setIsAdding(false);
     alert('새 사용자가 성공적으로 추가되었습니다! 🎉');
   };
@@ -94,6 +107,7 @@ export default function AdminUserCms() {
           ...u,
           currentPassword: editPassword || u.currentPassword,
           patientName: u.role === 'parent' ? editPatientName.trim() : undefined,
+          classGroup: u.role !== 'admin' ? editClassGroup : undefined,
           isPasswordChanged: editPassword ? true : u.isPasswordChanged, // 비밀번호 직접 강제지정 시 변경처리
         };
       }
@@ -105,6 +119,7 @@ export default function AdminUserCms() {
     setEditingUser(null);
     setEditPassword('');
     setEditPatientName('');
+    setEditClassGroup('자립지원반');
     alert('사용자 정보가 성공적으로 수정되었습니다! ✨');
   };
 
@@ -181,6 +196,23 @@ export default function AdminUserCms() {
             />
           </div>
 
+          {newRole !== 'admin' && (
+            <div className="animate-fadeIn">
+              <label className="block text-xs font-bold text-[#5D554D] mb-1">소속 반/그룹 선택</label>
+              <select
+                value={newClassGroup}
+                onChange={(e) => setNewClassGroup(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-[#D97706] text-[#4A443F]"
+              >
+                {CLASS_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt === '팀장' ? '💼 팀장' : `👥 ${opt}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {newRole === 'parent' && (
             <div className="animate-fadeIn">
               <label className="block text-xs font-bold text-[#5D554D] mb-1">피보호자 성함 (꿈이음 이용인명)</label>
@@ -244,6 +276,23 @@ export default function AdminUserCms() {
             />
           </div>
 
+          {editingUser.role !== 'admin' && (
+            <div className="animate-fadeIn">
+              <label className="block text-xs font-bold text-[#5D554D] mb-1">소속 반/그룹 변경</label>
+              <select
+                value={editClassGroup}
+                onChange={(e) => setEditClassGroup(e.target.value)}
+                className="w-full bg-[#FEF9F2]/20 border border-[#E9E4DB] rounded-xl p-2 text-xs focus:outline-none focus:border-[#D97706] text-[#4A443F]"
+              >
+                {CLASS_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt === '팀장' ? '💼 팀장' : `👥 ${opt}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {editingUser.role === 'parent' && (
             <div>
               <label className="block text-xs font-bold text-[#5D554D] mb-1">피보호자 성함 (꿈이음 이용인명)</label>
@@ -291,7 +340,7 @@ export default function AdminUserCms() {
               }`}
             >
               <div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-bold text-xs text-[#4A443F]">{user.name}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
                     isRoleAdmin 
@@ -302,6 +351,11 @@ export default function AdminUserCms() {
                   }`}>
                     {isRoleAdmin ? '👑 관리자' : isRoleStaff ? '👩‍🏫 직원' : '👪 보호자'}
                   </span>
+                  {user.classGroup && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-[#E0F2FE] text-[#0369A1] border border-[#BAE6FD] flex items-center gap-0.5">
+                      🏷️ {user.classGroup}
+                    </span>
+                  )}
                 </div>
                 <div className="text-[10px] text-[#5D554D] mt-1 flex flex-col gap-0.5">
                   <span>🆔 아이디: <code className="font-mono bg-[#FAF9F6] px-1 rounded border border-[#E9E4DB]/40">{user.id}</code></span>
@@ -321,6 +375,7 @@ export default function AdminUserCms() {
                       setEditingUser(user);
                       setEditPassword('');
                       setEditPatientName(user.patientName || '');
+                      setEditClassGroup(user.classGroup || '자립지원반');
                     }}
                     className="p-1.5 bg-[#FAF9F6] hover:bg-[#FEF9F2] text-[#92400E] rounded-lg text-[10px] font-bold border border-[#E9E4DB] transition-all shadow-sm"
                   >

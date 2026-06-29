@@ -22,7 +22,16 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
   const [isWriting, setIsWriting] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [receiverId, setReceiverId] = useState('');
+  const [selectedReceiverIds, setSelectedReceiverIds] = useState<string[]>([]);
+  const [expandedGroups, setExpandedGroups] = useState<{ [groupName: string]: boolean }>({
+    '팀장': true,
+    '자립지원반': true,
+    '문화예술반': true,
+    '스포츠반': true,
+    '개인별지원반': true,
+    '맞춤형지원반': true,
+    '미지정': true
+  });
   const [selectedMood, setSelectedMood] = useState<MoodType | undefined>(undefined);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -99,48 +108,50 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
       return;
     }
 
-    if (!receiverId) {
-      setWriteError('수신인을 선택해 주세요. 🤝');
+    if (selectedReceiverIds.length === 0) {
+      setWriteError('수신인을 최소 한 명 이상 선택해 주세요. 🤝');
       return;
     }
 
-    const receiver = users.find((u) => u.id === receiverId);
-    if (!receiver) {
-      setWriteError('유효하지 않은 수신인입니다.');
-      return;
-    }
+    // 각 수신인마다 개별 알림장 생성
+    const newReports: DailyReport[] = selectedReceiverIds.map((recId, idx) => {
+      const receiver = users.find((u) => u.id === recId);
+      const rName = receiver 
+        ? (receiver.role === 'parent' && receiver.patientName 
+            ? `${receiver.name} (${receiver.patientName} 보호자)` 
+            : receiver.name)
+        : recId;
 
-    const newReport: DailyReport = {
-      id: `report-${Date.now()}`,
-      title: title.trim(),
-      content: content.trim(),
-      writerId: currentUser.id,
-      writerName: currentUser.role === 'parent' && currentUser.patientName 
-        ? `${currentUser.name} (${currentUser.patientName} 보호자)` 
-        : currentUser.name,
-      writerRole: currentUser.role,
-      receiverId: receiver.id,
-      receiverName: receiver.role === 'parent' && receiver.patientName 
-        ? `${receiver.name} (${receiver.patientName} 보호자)` 
-        : receiver.name,
-      mood: (currentUser.role === 'staff' || currentUser.role === 'parent') ? selectedMood : undefined, // 직원 및 보호자 기분카드 저장
-      images: selectedImages,
-      likes: [],
-      createdAt: new Date().toISOString(),
-    };
+      return {
+        id: `report-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+        title: title.trim(),
+        content: content.trim(),
+        writerId: currentUser.id,
+        writerName: currentUser.role === 'parent' && currentUser.patientName 
+          ? `${currentUser.name} (${currentUser.patientName} 보호자)` 
+          : currentUser.name,
+        writerRole: currentUser.role,
+        receiverId: recId,
+        receiverName: rName,
+        mood: (currentUser.role === 'staff' || currentUser.role === 'parent') ? selectedMood : undefined,
+        images: selectedImages,
+        likes: [],
+        createdAt: new Date().toISOString(),
+      };
+    });
 
-    const updatedList = [newReport, ...reports];
+    const updatedList = [...newReports, ...reports];
     storage.saveDailyReports(updatedList);
     setReports(updatedList);
 
     // 폼 초기화
     setTitle('');
     setContent('');
-    setReceiverId('');
+    setSelectedReceiverIds([]);
     setSelectedMood(undefined);
     setSelectedImages([]);
     setIsWriting(false);
-    alert('알림장이 성공적으로 등록되었습니다! 📝💌');
+    alert(`${newReports.length}명의 수신인에게 알림장이 성공적으로 전송되었습니다! 📝💌`);
   };
 
   // 이미지 다중 업로드 및 압축 로직
@@ -342,6 +353,50 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
     { type: '🤒 아픔(통증/컨디션 난조)', icon: '🤒', text: '컨디션 아픔', bg: 'bg-rose-50', border: 'border-rose-200 text-rose-800' },
   ];
 
+  const handleToggleReceiver = (userId: string) => {
+    setSelectedReceiverIds((prev) => 
+      prev.includes(userId) 
+        ? prev.filter((id) => id !== userId) 
+        : [...prev, userId]
+    );
+  };
+
+  const handleToggleGroup = (groupName: string, groupUsers: User[]) => {
+    const groupUserIds = groupUsers.map(u => u.id);
+    const allSelected = groupUserIds.every(id => selectedReceiverIds.includes(id));
+    
+    if (allSelected) {
+      setSelectedReceiverIds((prev) => prev.filter(id => !groupUserIds.includes(id)));
+    } else {
+      setSelectedReceiverIds((prev) => {
+        const filtered = prev.filter(id => !groupUserIds.includes(id));
+        return [...filtered, ...groupUserIds];
+      });
+    }
+  };
+
+  const receivers = getReceivers();
+  const groups: { [groupName: string]: User[] } = {
+    '팀장': [],
+    '자립지원반': [],
+    '문화예술반': [],
+    '스포츠반': [],
+    '개인별지원반': [],
+    '맞춤형지원반': [],
+    '미지정': []
+  };
+
+  receivers.forEach((u) => {
+    const grp = u.classGroup || '미지정';
+    if (groups[grp]) {
+      groups[grp].push(u);
+    } else {
+      groups[grp] = [u];
+    }
+  });
+
+  const activeGroups = Object.keys(groups).filter(g => groups[g].length > 0);
+
   return (
     <div className={`space-y-4 ${fontSizeClass}`} id="daily-report-list-tab">
       
@@ -360,9 +415,7 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
             <button
               onClick={() => {
                 setIsWriting(true);
-                // 첫 수신자 세팅
-                const recs = getReceivers();
-                if (recs.length > 0) setReceiverId(recs[0].id);
+                setSelectedReceiverIds([]);
               }}
               className="bg-[#D97706] hover:bg-[#92400E] text-white font-bold text-xs px-3.5 py-2 rounded-2xl shadow-sm transition-all flex items-center gap-1"
               id="btn-trigger-write-report"
@@ -452,24 +505,104 @@ export default function DailyReportList({ currentUser, fontSizeClass }: DailyRep
             </button>
           </div>
 
-          {/* 수신인 선택 */}
-          <div>
-            <label className="block text-xs font-bold text-[#5D554D] mb-1.5">👥 누구에게 보낼까요? (수신인 지정)</label>
-            <select
-              value={receiverId}
-              onChange={(e) => setReceiverId(e.target.value)}
-              className="w-full bg-[#FEF9F2]/40 border border-[#E9E4DB] rounded-2xl p-3 text-xs focus:outline-none focus:border-[#D97706] font-bold text-[#4A443F]"
-              required
-            >
-              <option value="" disabled>수신인을 선택해 주세요</option>
-              {getReceivers().map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.role === 'parent' && u.patientName 
-                    ? `👪 ${u.name} (회원: ${u.patientName})` 
-                    : `${u.role === 'admin' ? '👑' : '👩‍🏫'} ${u.name}`}
-                </option>
-              ))}
-            </select>
+          {/* 수신인 선택 (그룹별 아코디언 및 체크박스 멀티셀렉터) */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-[#5D554D] mb-1">
+              👥 누구에게 보낼까요? (수신 그룹 및 대상 다중 선택)
+            </label>
+            
+            <div className="border border-[#E9E4DB] rounded-2xl bg-[#FAF9F6]/50 p-3 space-y-3 max-h-[220px] overflow-y-auto">
+              {activeGroups.map((groupName) => {
+                const groupUsers = groups[groupName];
+                const groupUserIds = groupUsers.map(u => u.id);
+                const isGroupAllSelected = groupUserIds.every(id => selectedReceiverIds.includes(id));
+                const isGroupPartiallySelected = groupUserIds.some(id => selectedReceiverIds.includes(id)) && !isGroupAllSelected;
+                const isExpanded = expandedGroups[groupName] !== false;
+
+                return (
+                  <div key={groupName} className="border-b border-[#E9E4DB]/40 last:border-0 pb-2 last:pb-0">
+                    {/* 그룹 헤더 */}
+                    <div className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isGroupAllSelected}
+                          ref={(el) => {
+                            if (el) {
+                              el.indeterminate = isGroupPartiallySelected;
+                            }
+                          }}
+                          onChange={() => handleToggleGroup(groupName, groupUsers)}
+                          className="w-4 h-4 rounded border-[#E9E4DB] text-[#D97706] focus:ring-[#D97706] cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGroup(groupName, groupUsers)}
+                          className="font-bold text-xs text-[#4A443F] hover:text-[#D97706]"
+                        >
+                          {groupName === '팀장' ? '💼' : '👥'} {groupName} ({groupUserIds.length}명)
+                        </button>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGroups(prev => ({ ...prev, [groupName]: !isExpanded }))}
+                        className="text-[10px] font-bold text-[#928B81] hover:text-[#4A443F] px-2 py-1 bg-white rounded-lg border border-[#E9E4DB]/60 shadow-sm"
+                      >
+                        {isExpanded ? '접기 🔼' : '목록 보기 🔽'}
+                      </button>
+                    </div>
+
+                    {/* 그룹 멤버 리스트 */}
+                    {isExpanded && (
+                      <div className="grid grid-cols-2 gap-1.5 mt-2 ml-6 pl-1 border-l-2 border-[#D97706]/10 animate-fadeIn">
+                        {groupUsers.map((u) => {
+                          const isChecked = selectedReceiverIds.includes(u.id);
+                          return (
+                            <label
+                              key={u.id}
+                              className={`flex items-center gap-2 p-2 rounded-xl border text-[11px] font-medium transition-all cursor-pointer ${
+                                isChecked
+                                  ? 'bg-amber-50 border-amber-200 text-amber-900 font-bold'
+                                  : 'bg-white border-[#E9E4DB]/60 text-[#5D554D] hover:bg-[#FEF9F2]/30'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleReceiver(u.id)}
+                                className="w-3.5 h-3.5 rounded border-[#E9E4DB] text-[#D97706] focus:ring-[#D97706]"
+                              />
+                              <span className="truncate">
+                                {u.role === 'parent' && u.patientName
+                                  ? `👪 ${u.name} (${u.patientName})`
+                                  : `👩‍🏫 ${u.name}`}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* 선택 요약 */}
+            <div className="flex items-center justify-between bg-amber-50/40 px-3 py-2 rounded-xl border border-amber-100/60 text-xs">
+              <span className="font-semibold text-[#5D554D]">
+                선택된 수신인: <span className="text-[#D97706] font-bold">{selectedReceiverIds.length}</span>명
+              </span>
+              {selectedReceiverIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedReceiverIds([])}
+                  className="text-[10px] font-bold text-rose-500 hover:text-rose-700 bg-white px-2 py-1 rounded-lg border border-rose-100 shadow-sm"
+                >
+                  선택 초기화 ✕
+                </button>
+              )}
+            </div>
           </div>
 
           {/* 기분 카드 선택 (직원 및 보호자 공동) */}

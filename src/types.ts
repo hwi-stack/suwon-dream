@@ -9,6 +9,7 @@ export interface User {
   isPasswordChanged: boolean;
   createdAt: string;
   patientName?: string; // 보호자 전용: 아동/장애인 성함
+  classGroup?: string; // 담당/소속 반 (팀장, 자립지원반, 문화예술반, 스포츠반, 개인별지원반, 맞춤형지원반 등)
 }
 
 export type MoodType = '😆 매우 밝음' | '🙂 평온함' | '😴 조금 졸림/지침' | '😟 불편함/예민함' | '🤒 아픔(통증/컨디션 난조)';
